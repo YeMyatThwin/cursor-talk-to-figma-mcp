@@ -595,6 +595,98 @@ server.tool(
   }
 );
 
+// Create Circle Tool
+server.tool(
+  "create_circle",
+  "Create a new circle/ellipse in Figma",
+  {
+    x: z.number().describe("X position"),
+    y: z.number().describe("Y position"),
+    width: z.number().positive().optional().describe("Width of the circle (default: radius * 2)"),
+    height: z.number().positive().optional().describe("Height of the circle (default: radius * 2)"),
+    radius: z.number().positive().optional().describe("Radius of the circle (ignored if width/height provided)"),
+    fillColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe("Alpha component (opacity, 0-1)"),
+      })
+      .optional()
+      .describe("Fill color in RGBA format"),
+    strokeColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe("Alpha component (0-1)"),
+      })
+      .optional()
+      .describe("Stroke color in RGBA format"),
+    strokeWeight: z.number().positive().optional().describe("Stroke weight"),
+    name: z.string().optional().describe("Optional name for the circle"),
+    parentId: z
+      .string()
+      .optional()
+      .describe("Optional parent node ID to append the circle to"),
+  },
+  async ({ x, y, width, height, radius, fillColor, strokeColor, strokeWeight, name, parentId }: any) => {
+    try {
+      // Calculate dimensions - prioritize width/height over radius
+      let finalWidth, finalHeight;
+      if (width !== undefined || height !== undefined) {
+        finalWidth = width || height || 100;
+        finalHeight = height || width || 100;
+      } else {
+        const circleRadius = radius || 50;
+        finalWidth = circleRadius * 2;
+        finalHeight = circleRadius * 2;
+      }
+
+      const result = await sendCommandToFigma("create_circle", {
+        x,
+        y,
+        width: finalWidth,
+        height: finalHeight,
+        fillColor: fillColor || { r: 0.2, g: 0.4, b: 1, a: 1 }, // Default to blue
+        strokeColor: strokeColor,
+        strokeWeight: strokeWeight,
+        name: name || "Circle",
+        parentId,
+      });
+      const typedResult = result as { name: string; id: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Created circle "${typedResult.name}" with ID: ${typedResult.id} (${finalWidth}x${finalHeight})`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error creating circle: ${error instanceof Error ? error.message : String(error)
+              }`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Set Fill Color Tool
 server.tool(
   "set_fill_color",
@@ -1896,7 +1988,7 @@ server.prompt(
 
 The process of converting manual annotations (numbered/alphabetical indicators with connected descriptions) to Figma's native annotations:
 
-1. Get selected frame/component information
+1. Get the selected frame/component that contains annotations
 2. Scan and collect all annotation text nodes
 3. Scan target UI elements (components, instances, frames)
 4. Match annotations to appropriate UI elements
@@ -2615,6 +2707,7 @@ type FigmaCommand =
   | "get_nodes_info"
   | "read_my_design"
   | "create_rectangle"
+  | "create_circle"
   | "create_frame"
   | "create_text"
   | "set_fill_color"
@@ -2662,6 +2755,18 @@ type CommandParams = {
     height: number;
     name?: string;
     parentId?: string;
+  };
+  create_circle: {
+    x: number;
+    y: number;
+    width?: number;
+    height?: number;
+    radius?: number;
+    name?: string;
+    parentId?: string;
+    fillColor?: { r: number; g: number; b: number; a?: number };
+    strokeColor?: { r: number; g: number; b: number; a?: number };
+    strokeWeight?: number;
   };
   create_frame: {
     x: number;

@@ -123,6 +123,8 @@ async function handleCommand(command, params) {
       return await readMyDesign();
     case "create_rectangle":
       return await createRectangle(params);
+    case "create_circle":
+      return await createCircle(params);
     case "create_frame":
       return await createFrame(params);
     case "create_text":
@@ -687,6 +689,97 @@ async function createRectangle(params) {
     width: rect.width,
     height: rect.height,
     parentId: rect.parent ? rect.parent.id : undefined,
+  };
+}
+
+async function createCircle(params) {
+  const {
+    x = 0,
+    y = 0,
+    width,
+    height,
+    radius = 50,
+    name = "Circle",
+    parentId,
+    fillColor,
+    strokeColor,
+    strokeWeight,
+  } = params || {};
+
+  // Calculate final dimensions - prioritize width/height over radius
+  let finalWidth, finalHeight;
+  if (width !== undefined || height !== undefined) {
+    finalWidth = width || height || 100;
+    finalHeight = height || width || 100;
+  } else {
+    finalWidth = radius * 2;
+    finalHeight = radius * 2;
+  }
+
+  const circle = figma.createEllipse();
+  circle.x = x;
+  circle.y = y;
+  circle.resize(finalWidth, finalHeight);
+  circle.name = name;
+
+  // Set fill color if provided
+  if (fillColor) {
+    const paintStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(fillColor.r) || 0,
+        g: parseFloat(fillColor.g) || 0,
+        b: parseFloat(fillColor.b) || 0,
+      },
+      opacity: parseFloat(fillColor.a) || 1,
+    };
+    circle.fills = [paintStyle];
+  }
+
+  // Set stroke color and weight if provided
+  if (strokeColor) {
+    const strokeStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(strokeColor.r) || 0,
+        g: parseFloat(strokeColor.g) || 0,
+        b: parseFloat(strokeColor.b) || 0,
+      },
+      opacity: parseFloat(strokeColor.a) || 1,
+    };
+    circle.strokes = [strokeStyle];
+  }
+
+  // Set stroke weight if provided
+  if (strokeWeight !== undefined) {
+    circle.strokeWeight = strokeWeight;
+  }
+
+  // If parentId is provided, append to that node, otherwise append to current page
+  if (parentId) {
+    const parentNode = await figma.getNodeByIdAsync(parentId);
+    if (!parentNode) {
+      throw new Error(`Parent node not found with ID: ${parentId}`);
+    }
+    if (!("appendChild" in parentNode)) {
+      throw new Error(`Parent node does not support children: ${parentId}`);
+    }
+    parentNode.appendChild(circle);
+  } else {
+    figma.currentPage.appendChild(circle);
+  }
+
+  return {
+    id: circle.id,
+    name: circle.name,
+    x: circle.x,
+    y: circle.y,
+    width: circle.width,
+    height: circle.height,
+    fills: circle.fills,
+    strokes: circle.strokes,
+    strokeWeight: circle.strokeWeight,
+    parentId: circle.parent ? circle.parent.id : undefined,
   };
 }
 
@@ -2406,17 +2499,17 @@ async function getAnnotations(params) {
       };
       await collect(node);
 
-      const result = {
+      const response = {
         nodeId: node.id,
         name: node.name,
         annotations: mergedAnnotations,
       };
 
       if (includeCategories) {
-        result.categories = Object.values(categoriesMap);
+        response.categories = Object.values(categoriesMap);
       }
 
-      return result;
+      return response;
     } else {
       // Get all annotations in the current page
       const annotations = [];

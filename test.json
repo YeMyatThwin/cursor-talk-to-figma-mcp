@@ -1,0 +1,824 @@
+[
+  {
+    "nodeId": "151:340",
+    "document": {
+      "id": "151:340",
+      "name": "Home Page - overlay",
+      "type": "FRAME",
+      "fills": [
+        {
+          "blendMode": "NORMAL",
+          "type": "SOLID",
+          "color": "#fafafa"
+        }
+      ],
+      "absoluteBoundingBox": {
+        "x": 5320,
+        "y": -1610,
+        "width": 1440,
+        "height": 1024
+      },
+      "children": [
+        {
+          "id": "151:341",
+          "name": "Header",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "strokes": [
+            {
+              "opacity": 0.10000000149011612,
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#cccccc"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 5320,
+            "y": -1610,
+            "width": 1440,
+            "height": 80
+          },
+          "children": [
+            {
+              "id": "151:342",
+              "name": "Brand Logo",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#333333"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5400,
+                "y": -1584.5,
+                "width": 124,
+                "height": 29
+              },
+              "characters": "YourBrand",
+              "style": {
+                "fontFamily": "Inter",
+                "fontStyle": "Bold",
+                "fontWeight": 700,
+                "fontSize": 24,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 29.045454025268555
+              }
+            },
+            {
+              "id": "151:343",
+              "name": "Navigation",
+              "type": "FRAME",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#ffffff"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 6380,
+                "y": -1590,
+                "width": 300,
+                "height": 40
+              },
+              "children": [
+                {
+                  "id": "151:344",
+                  "name": "Nav Home",
+                  "type": "TEXT",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#666666"
+                    }
+                  ],
+                  "absoluteBoundingBox": {
+                    "x": 6371,
+                    "y": -1579.5,
+                    "width": 46,
+                    "height": 19
+                  },
+                  "characters": "Home",
+                  "style": {
+                    "fontFamily": "Inter",
+                    "fontStyle": "Medium",
+                    "fontWeight": 500,
+                    "fontSize": 16,
+                    "textAlignHorizontal": "LEFT",
+                    "letterSpacing": 0,
+                    "lineHeightPx": 19.363636016845703
+                  }
+                },
+                {
+                  "id": "151:345",
+                  "name": "Nav About",
+                  "type": "TEXT",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#666666"
+                    }
+                  ],
+                  "absoluteBoundingBox": {
+                    "x": 6449,
+                    "y": -1579.5,
+                    "width": 47,
+                    "height": 19
+                  },
+                  "characters": "About",
+                  "style": {
+                    "fontFamily": "Inter",
+                    "fontStyle": "Medium",
+                    "fontWeight": 500,
+                    "fontSize": 16,
+                    "textAlignHorizontal": "LEFT",
+                    "letterSpacing": 0,
+                    "lineHeightPx": 19.363636016845703
+                  }
+                },
+                {
+                  "id": "151:346",
+                  "name": "Nav Services",
+                  "type": "TEXT",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#666666"
+                    }
+                  ],
+                  "absoluteBoundingBox": {
+                    "x": 6528,
+                    "y": -1579.5,
+                    "width": 67,
+                    "height": 19
+                  },
+                  "characters": "Services",
+                  "style": {
+                    "fontFamily": "Inter",
+                    "fontStyle": "Medium",
+                    "fontWeight": 500,
+                    "fontSize": 16,
+                    "textAlignHorizontal": "LEFT",
+                    "letterSpacing": 0,
+                    "lineHeightPx": 19.363636016845703
+                  }
+                },
+                {
+                  "id": "151:347",
+                  "name": "Nav Contact",
+                  "type": "TEXT",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#666666"
+                    }
+                  ],
+                  "absoluteBoundingBox": {
+                    "x": 6627,
+                    "y": -1579.5,
+                    "width": 62,
+                    "height": 19
+                  },
+                  "characters": "Contact",
+                  "style": {
+                    "fontFamily": "Inter",
+                    "fontStyle": "Medium",
+                    "fontWeight": 500,
+                    "fontSize": 16,
+                    "textAlignHorizontal": "LEFT",
+                    "letterSpacing": 0,
+                    "lineHeightPx": 19.363636016845703
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "151:348",
+          "name": "Hero Section",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#f0f5f7"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 5320,
+            "y": -1530,
+            "width": 1440,
+            "height": 600
+          },
+          "children": [
+            {
+              "id": "151:349",
+              "name": "Hero Headline",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#1a1a1a"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5697,
+                "y": -1338,
+                "width": 686,
+                "height": 68
+              },
+              "characters": "Transform Your Business",
+              "style": {
+                "fontFamily": "Inter",
+                "fontStyle": "Bold",
+                "fontWeight": 700,
+                "fontSize": 56,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 67.7727279663086
+              }
+            },
+            {
+              "id": "151:350",
+              "name": "Hero Subtitle",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#666666"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5800.5,
+                "y": -1238,
+                "width": 479,
+                "height": 24
+              },
+              "characters": "Innovative solutions that drive growth and success",
+              "style": {
+                "fontFamily": "Inter",
+                "fontStyle": "Regular",
+                "fontWeight": 400,
+                "fontSize": 20,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 24.204544067382812
+              }
+            },
+            {
+              "id": "151:351",
+              "name": "CTA Buttons",
+              "type": "FRAME",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#ffffff"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5880,
+                "y": -1182,
+                "width": 320,
+                "height": 60
+              },
+              "children": [
+                {
+                  "id": "151:352",
+                  "name": "Primary Button",
+                  "type": "FRAME",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#3366cc"
+                    }
+                  ],
+                  "cornerRadius": 8,
+                  "absoluteBoundingBox": {
+                    "x": 5892,
+                    "y": -1176,
+                    "width": 140,
+                    "height": 48
+                  },
+                  "children": [
+                    {
+                      "id": "151:353",
+                      "name": "Button Text",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#ffffff"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 5917,
+                        "y": -1161.5,
+                        "width": 90,
+                        "height": 19
+                      },
+                      "characters": "Get Started",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Semi Bold",
+                        "fontWeight": 600,
+                        "fontSize": 16,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 19.363636016845703
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "151:354",
+                  "name": "Secondary Button",
+                  "type": "FRAME",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#ffffff"
+                    }
+                  ],
+                  "strokes": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#3366cc"
+                    }
+                  ],
+                  "cornerRadius": 8,
+                  "absoluteBoundingBox": {
+                    "x": 6048,
+                    "y": -1176,
+                    "width": 140,
+                    "height": 48
+                  },
+                  "children": [
+                    {
+                      "id": "151:355",
+                      "name": "Secondary Button Text",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#3366cc"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 6074,
+                        "y": -1161.5,
+                        "width": 88,
+                        "height": 19
+                      },
+                      "characters": "Learn More",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Semi Bold",
+                        "fontWeight": 600,
+                        "fontSize": 16,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 19.363636016845703
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "151:356",
+          "name": "Features Section",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#ffffff"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 5320,
+            "y": -930,
+            "width": 1440,
+            "height": 400
+          },
+          "children": [
+            {
+              "id": "151:357",
+              "name": "Features Title",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#1a1a1a"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5885,
+                "y": -878,
+                "width": 310,
+                "height": 48
+              },
+              "characters": "Why Choose Us",
+              "style": {
+                "fontFamily": "Inter",
+                "fontStyle": "Bold",
+                "fontWeight": 700,
+                "fontSize": 40,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 48.409088134765625
+              }
+            },
+            {
+              "id": "151:358",
+              "name": "Features Grid",
+              "type": "FRAME",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#ffffff"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5540,
+                "y": -782,
+                "width": 1000,
+                "height": 200
+              },
+              "children": [
+                {
+                  "id": "151:359",
+                  "name": "Feature Card 1",
+                  "type": "FRAME",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#f5fafc"
+                    }
+                  ],
+                  "strokes": [
+                    {
+                      "opacity": 0.10000000149011612,
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#e5e5e5"
+                    }
+                  ],
+                  "cornerRadius": 12,
+                  "absoluteBoundingBox": {
+                    "x": 5558,
+                    "y": -772,
+                    "width": 300,
+                    "height": 180
+                  },
+                  "children": [
+                    {
+                      "id": "151:360",
+                      "name": "Feature 1 Title",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#333333"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 5637,
+                        "y": -710.5,
+                        "width": 142,
+                        "height": 24
+                      },
+                      "characters": "Fast & Reliable",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Semi Bold",
+                        "fontWeight": 600,
+                        "fontSize": 20,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 24.204544067382812
+                      }
+                    },
+                    {
+                      "id": "151:361",
+                      "name": "Feature 1 Description",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#808080"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 5518,
+                        "y": -670.5,
+                        "width": 380,
+                        "height": 17
+                      },
+                      "characters": "Lightning-fast performance with 99.9% uptime guarantee",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Regular",
+                        "fontWeight": 400,
+                        "fontSize": 14,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 16.94318199157715
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "151:362",
+                  "name": "Feature Card 2",
+                  "type": "FRAME",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#f5fafc"
+                    }
+                  ],
+                  "strokes": [
+                    {
+                      "opacity": 0.10000000149011612,
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#e5e5e5"
+                    }
+                  ],
+                  "cornerRadius": 12,
+                  "absoluteBoundingBox": {
+                    "x": 5890,
+                    "y": -772,
+                    "width": 300,
+                    "height": 180
+                  },
+                  "children": [
+                    {
+                      "id": "151:363",
+                      "name": "Feature 2 Title",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#333333"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 5972.5,
+                        "y": -710.5,
+                        "width": 135,
+                        "height": 24
+                      },
+                      "characters": "Secure & Safe",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Semi Bold",
+                        "fontWeight": 600,
+                        "fontSize": 20,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 24.204544067382812
+                      }
+                    },
+                    {
+                      "id": "151:364",
+                      "name": "Feature 2 Description",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#808080"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 5861.5,
+                        "y": -670.5,
+                        "width": 357,
+                        "height": 17
+                      },
+                      "characters": "Enterprise-grade security with end-to-end encryption",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Regular",
+                        "fontWeight": 400,
+                        "fontSize": 14,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 16.94318199157715
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "151:365",
+                  "name": "Feature Card 3",
+                  "type": "FRAME",
+                  "fills": [
+                    {
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#f5fafc"
+                    }
+                  ],
+                  "strokes": [
+                    {
+                      "opacity": 0.10000000149011612,
+                      "blendMode": "NORMAL",
+                      "type": "SOLID",
+                      "color": "#e5e5e5"
+                    }
+                  ],
+                  "cornerRadius": 12,
+                  "absoluteBoundingBox": {
+                    "x": 6222,
+                    "y": -772,
+                    "width": 300,
+                    "height": 180
+                  },
+                  "children": [
+                    {
+                      "id": "151:366",
+                      "name": "Feature 3 Title",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#333333"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 6307.5,
+                        "y": -710.5,
+                        "width": 129,
+                        "height": 24
+                      },
+                      "characters": "24/7 Support",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Semi Bold",
+                        "fontWeight": 600,
+                        "fontSize": 20,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 24.204544067382812
+                      }
+                    },
+                    {
+                      "id": "151:367",
+                      "name": "Feature 3 Description",
+                      "type": "TEXT",
+                      "fills": [
+                        {
+                          "blendMode": "NORMAL",
+                          "type": "SOLID",
+                          "color": "#808080"
+                        }
+                      ],
+                      "absoluteBoundingBox": {
+                        "x": 6191.5,
+                        "y": -670.5,
+                        "width": 361,
+                        "height": 17
+                      },
+                      "characters": "Round-the-clock expert support whenever you need it",
+                      "style": {
+                        "fontFamily": "Inter",
+                        "fontStyle": "Regular",
+                        "fontWeight": 400,
+                        "fontSize": 14,
+                        "textAlignHorizontal": "LEFT",
+                        "letterSpacing": 0,
+                        "lineHeightPx": 16.94318199157715
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "151:368",
+          "name": "Footer",
+          "type": "FRAME",
+          "fills": [
+            {
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#262626"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 5320,
+            "y": -530,
+            "width": 1440,
+            "height": 120
+          },
+          "children": [
+            {
+              "id": "151:369",
+              "name": "Footer Text",
+              "type": "TEXT",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#ffffff"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5892,
+                "y": -479.5,
+                "width": 296,
+                "height": 19
+              },
+              "characters": "© 2024 YourBrand. All rights reserved.",
+              "style": {
+                "fontFamily": "Inter",
+                "fontStyle": "Medium",
+                "fontWeight": 500,
+                "fontSize": 16,
+                "textAlignHorizontal": "LEFT",
+                "letterSpacing": 0,
+                "lineHeightPx": 19.363636016845703
+              }
+            }
+          ]
+        },
+        {
+          "id": "162:55",
+          "name": "black background",
+          "type": "FRAME",
+          "fills": [
+            {
+              "opacity": 0.2199999988079071,
+              "blendMode": "NORMAL",
+              "type": "SOLID",
+              "color": "#ff1414"
+            }
+          ],
+          "absoluteBoundingBox": {
+            "x": 5320,
+            "y": -1610,
+            "width": 1440,
+            "height": 1024
+          },
+          "children": [
+            {
+              "id": "162:57",
+              "name": "Ellipse 1",
+              "type": "ELLIPSE",
+              "fills": [
+                {
+                  "blendMode": "NORMAL",
+                  "type": "SOLID",
+                  "color": "#24ffa4"
+                }
+              ],
+              "absoluteBoundingBox": {
+                "x": 5380,
+                "y": -1571,
+                "width": 98,
+                "height": 94
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

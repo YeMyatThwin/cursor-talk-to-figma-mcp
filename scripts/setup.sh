@@ -1,18 +1,16 @@
 #!/bin/bash
 
 # Create .cursor directory if it doesn't exist
-mkdir -p .cursor
+mkdir -p .vscode
 
 bun install
 
 # Create mcp.json with the current directory path
 echo "{
-  \"mcpServers\": {
+  \"servers\": {
     \"TalkToFigma\": {
-      \"command\": \"bunx\",
-      \"args\": [
-        \"cursor-talk-to-figma-mcp@latest\"
-      ]
+      \"command\": \"bun\",
+      \"args\": [\"run\", \"./src/talk_to_figma_mcp/server.ts\"]
     }
   }
-}" > .cursor/mcp.json 
+}" > .vscode/mcp.json 

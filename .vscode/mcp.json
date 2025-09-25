@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "TalkToFigma": {
+      "command": "bun",
+      "args": ["run", "./src/talk_to_figma_mcp/server.ts"]
+    }
+  }
+}
