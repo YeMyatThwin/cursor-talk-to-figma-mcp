@@ -123,8 +123,8 @@ async function handleCommand(command, params) {
       return await readMyDesign();
     case "create_rectangle":
       return await createRectangle(params);
-    case "create_circle":
-      return await createCircle(params);
+    case "create_ellipse":
+      return await createEllipse(params);
     case "create_frame":
       return await createFrame(params);
     case "create_text":
@@ -692,7 +692,7 @@ async function createRectangle(params) {
   };
 }
 
-async function createCircle(params) {
+async function createEllipse(params) {
   const {
     x = 0,
     y = 0,
@@ -716,11 +716,11 @@ async function createCircle(params) {
     finalHeight = radius * 2;
   }
 
-  const circle = figma.createEllipse();
-  circle.x = x;
-  circle.y = y;
-  circle.resize(finalWidth, finalHeight);
-  circle.name = name;
+  const ellipse = figma.createEllipse();
+  ellipse.x = x;
+  ellipse.y = y;
+  ellipse.resize(finalWidth, finalHeight);
+  ellipse.name = name;
 
   // Set fill color if provided
   if (fillColor) {
@@ -733,7 +733,7 @@ async function createCircle(params) {
       },
       opacity: parseFloat(fillColor.a) || 1,
     };
-    circle.fills = [paintStyle];
+  ellipse.fills = [paintStyle];
   }
 
   // Set stroke color and weight if provided
@@ -747,12 +747,12 @@ async function createCircle(params) {
       },
       opacity: parseFloat(strokeColor.a) || 1,
     };
-    circle.strokes = [strokeStyle];
+  ellipse.strokes = [strokeStyle];
   }
 
   // Set stroke weight if provided
   if (strokeWeight !== undefined) {
-    circle.strokeWeight = strokeWeight;
+  ellipse.strokeWeight = strokeWeight;
   }
 
   // If parentId is provided, append to that node, otherwise append to current page
@@ -764,22 +764,22 @@ async function createCircle(params) {
     if (!("appendChild" in parentNode)) {
       throw new Error(`Parent node does not support children: ${parentId}`);
     }
-    parentNode.appendChild(circle);
+  parentNode.appendChild(ellipse);
   } else {
-    figma.currentPage.appendChild(circle);
+  figma.currentPage.appendChild(ellipse);
   }
 
   return {
-    id: circle.id,
-    name: circle.name,
-    x: circle.x,
-    y: circle.y,
-    width: circle.width,
-    height: circle.height,
-    fills: circle.fills,
-    strokes: circle.strokes,
-    strokeWeight: circle.strokeWeight,
-    parentId: circle.parent ? circle.parent.id : undefined,
+    id: ellipse.id,
+    name: ellipse.name,
+    x: ellipse.x,
+    y: ellipse.y,
+    width: ellipse.width,
+    height: ellipse.height,
+    fills: ellipse.fills,
+    strokes: ellipse.strokes,
+    strokeWeight: ellipse.strokeWeight,
+    parentId: ellipse.parent ? ellipse.parent.id : undefined,
   };
 }
 

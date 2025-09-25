@@ -597,7 +597,7 @@ server.tool(
 
 // Create Circle Tool
 server.tool(
-  "create_circle",
+  "create_ellipse",
   "Create a new circle/ellipse in Figma",
   {
     x: z.number().describe("X position"),
@@ -653,7 +653,7 @@ server.tool(
         finalHeight = circleRadius * 2;
       }
 
-      const result = await sendCommandToFigma("create_circle", {
+  const result = await sendCommandToFigma("create_ellipse", {
         x,
         y,
         width: finalWidth,
@@ -2707,7 +2707,7 @@ type FigmaCommand =
   | "get_nodes_info"
   | "read_my_design"
   | "create_rectangle"
-  | "create_circle"
+  | "create_ellipse"
   | "create_frame"
   | "create_text"
   | "set_fill_color"
@@ -2756,7 +2756,7 @@ type CommandParams = {
     name?: string;
     parentId?: string;
   };
-  create_circle: {
+  create_ellipse: {
     x: number;
     y: number;
     width?: number;
