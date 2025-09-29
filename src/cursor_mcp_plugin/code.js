@@ -659,6 +659,10 @@ async function createRectangle(params) {
     height = 100,
     name = "Rectangle",
     parentId,
+    fillColor,
+    strokeColor,
+    strokeWeight,
+    cornerRadius,
   } = params || {};
 
   const rect = figma.createRectangle();
@@ -666,6 +670,43 @@ async function createRectangle(params) {
   rect.y = y;
   rect.resize(width, height);
   rect.name = name;
+
+  // Set fill color if provided
+  if (fillColor) {
+    const paintStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(fillColor.r) || 0,
+        g: parseFloat(fillColor.g) || 0,
+        b: parseFloat(fillColor.b) || 0,
+      },
+      opacity: parseFloat(fillColor.a) || 1,
+    };
+    rect.fills = [paintStyle];
+  }
+
+  // Set stroke color and weight if provided
+  if (strokeColor) {
+    const strokeStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(strokeColor.r) || 0,
+        g: parseFloat(strokeColor.g) || 0,
+        b: parseFloat(strokeColor.b) || 0,
+      },
+      opacity: parseFloat(strokeColor.a) || 1,
+    };
+    rect.strokes = [strokeStyle];
+    
+    if (strokeWeight !== undefined) {
+      rect.strokeWeight = parseFloat(strokeWeight) || 1;
+    }
+  }
+
+  // Set corner radius if provided
+  if (cornerRadius !== undefined) {
+    rect.cornerRadius = parseFloat(cornerRadius) || 0;
+  }
 
   // If parentId is provided, append to that node, otherwise append to current page
   if (parentId) {
@@ -688,6 +729,10 @@ async function createRectangle(params) {
     y: rect.y,
     width: rect.width,
     height: rect.height,
+    cornerRadius: rect.cornerRadius,
+    fills: rect.fills,
+    strokes: rect.strokes,
+    strokeWeight: rect.strokeWeight,
     parentId: rect.parent ? rect.parent.id : undefined,
   };
 }

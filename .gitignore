@@ -2,3 +2,6 @@ node_modules/
 .cursor/
 dist/
 docs/
+
+
+uxwa.prompt.md

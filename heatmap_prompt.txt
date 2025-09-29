@@ -1,0 +1,98 @@
+Prompt for heatmap
+
+
+Overview:
+- Create a separate overlay frame named "heatmap" with the exact same size and (x,y) coordinates as the selected frame, but do NOT put it inside the original frame (it must be a sibling / top-level frame at the same coordinates).
+- Fill the "heatmap" frame with pure black and set opacity to 50% (0.5).
+- Create colored rectangles with full round edges inside the "heatmap" frame to mark attention areas for interactive/content elements. All created rectangles (for heatmap) must follow exact color and opacity rules and must be positioned relative to the "heatmap" frame.
+- Create figma comments for annotation for the references to the elements being highlighted.
+ 
+Step 1 — Create the heatmap frame (same size & coordinates, outside original frame)
+1. Get the selected frame:
+\`\`\`javascript
+const selection = await get_selectioan();
+if (!selection || selection[0].type !== "FRAME") {
+  throw new Error("Please select a single frame before running heatmap_strategy.");
+}
+const orig = selection[0];
+\`\`\`
+2. Create a sibling frame with the same x,y,width,height but NOT as a child of the original frame:
+\`\`\`javascript
+// Create a separate frame at the same absolute coordinates (not inside original)
+const heatmapFrameId = await create_frame({
+  x: orig.x,
+  y: orig.y,
+  width: orig.width,
+  height: orig.height,
+  name: "heatmap",
+  layoutMode: "NONE", // free-positioning inside heatmap
+  // Fill with black (r:0,g:0,b:0) and set alpha to 0.5
+  fillColor: { r: 0, g: 0, b: 0, a: 0.5 }
+});
+\`\`\`
+Notes:
+- The frame must be a sibling (or top-level) node, not nested inside the original frame.
+- The heatmap frame must visually overlap the original frame because it uses identical coordinates.
+ 
+Step 2 — Place rectangles with full round edges inside the heatmap frame to represent attention
+Rules for rectangles (strict):
+- Opacity must be exactly 50% (0.5).
+- Allowed colors ONLY (exact hex values):
+  - Red: #FF0000  -> high attention (primary CTAs, main headlines, logos)
+  - Amber: #FFC000 -> medium attention (navigation, secondary CTAs, section titles, interactive elements)
+  - Green: #00FF00 -> low attention (descriptions, footer text, supporting content)
+- Do NOT use any other colors, shades, tints, or alpha values (alpha must be exactly 0.5).
+- Highlight ONLY interactive elements and content areas:
+  - Buttons, text blocks, navigation items, logos, section titles, cards
+- All rectangles must have full corner radius (rounded edges) to create a pill/capsule shape.
+- Do NOT create rectangles for background areas, empty spaces, or whole-section coverings.
+- Each rectangle must fully cover the UI element it represents. Use multiple smaller rectangles to cover complex shapes rather than one oversized rectangle that includes unrelated elements.
+- All rectangles must be direct children of the "heatmap" frame.
+- Coordinates for each rectangle must be calculated relative to the heatmap frame using:
+  (rectangle_x = element_x - heatmap_x, rectangle_y = element_y - heatmap_y)
+ 
+Step 3 — Create figma comments for annotations
+- For each rectangle created, use figma comments for annotation to the elements being highlighted. Compare the elements with 10 usability heuristics. cross check everything again one by one and make sure you provide all the references clearly within the frame
+
+Step 4 — Comprehensive Usability Analysis and Improvement Suggestions
+
+For each annotated element, provide:
+
+1. **Current State Analysis**: What the element currently does well/poorly
+2. **Usability Heuristic Violations**: Specific heuristics that could be improved
+3. **Concrete Improvement Suggestions**: 
+   - Specific alternative text for CTAs
+   - Visual design recommendations
+   - Positioning/prominence suggestions
+   - User experience enhancements
+
+4. **Priority Level**: Rank improvements by impact (High/Medium/Low)
+
+5. **Examples**: Provide specific before/after suggestions:
+   - "Instead of [current text] → [suggested text]"
+   - "Consider adding [specific feature]"
+   - "Move [element] to [specific location] for better [reason]"
+
+Required analysis areas:
+- CTA effectiveness and specificity
+- Navigation clarity and state indicators  
+- Trust signals and social proof prominence
+- Content hierarchy and scanability
+- Conversion optimization opportunities
+- Accessibility considerations
+
+Expected deliverables:
+1. Heatmap overlay frame with colored attention rectangles
+2. Figma annotations for each highlighted element
+3. Comprehensive improvement analysis summary covering all annotated elements
+ 
+Important Requirements:
+- Follow exact color hex values (#FF0000, #FFC000, #00FF00) and exact opacity 0.5
+- Use multiple smaller rectangles with full round edges to precisely cover elements when necessary
+- All improvement suggestions must be:
+  - Specific and actionable (not generic advice)
+  - Based on recognized UX principles
+  - Include concrete examples of better alternatives
+  - Prioritized by potential impact on user experience
+  - Written in both brief annotation form AND comprehensive analysis summary
+- If you cannot meet the rules exactly, remove your work and retry until the heatmap adheres precisely to the policy`,

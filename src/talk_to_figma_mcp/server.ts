@@ -362,8 +362,36 @@ server.tool(
       .string()
       .optional()
       .describe("Optional parent node ID to append the rectangle to"),
+    fillColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z.number().min(0).max(1).optional().describe("Alpha component (opacity, 0-1)"),
+      })
+      .optional()
+      .describe("Fill color in RGBA format"),
+    strokeColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z.number().min(0).max(1).optional().describe("Alpha component (opacity, 0-1)"),
+      })
+      .optional()
+      .describe("Stroke color in RGBA format"),
+    strokeWeight: z
+      .number()
+      .positive()
+      .optional()
+      .describe("Stroke weight"),
+    cornerRadius: z
+      .number()
+      .min(0)
+      .optional()
+      .describe("Corner radius"),
   },
-  async ({ x, y, width, height, name, parentId }: any) => {
+  async ({ x, y, width, height, name, parentId, fillColor, strokeColor, strokeWeight, cornerRadius }: any) => {
     try {
       const result = await sendCommandToFigma("create_rectangle", {
         x,
@@ -372,6 +400,10 @@ server.tool(
         height,
         name: name || "Rectangle",
         parentId,
+        fillColor,
+        strokeColor,
+        strokeWeight,
+        cornerRadius,
       });
       return {
         content: [
@@ -595,7 +627,7 @@ server.tool(
   }
 );
 
-// Create Circle Tool
+// // Create Circle Tool
 server.tool(
   "create_ellipse",
   "Create a new circle/ellipse in Figma",
@@ -2755,6 +2787,10 @@ type CommandParams = {
     height: number;
     name?: string;
     parentId?: string;
+    fillColor?: { r: number; g: number; b: number; a?: number };
+    strokeColor?: { r: number; g: number; b: number; a?: number };
+    strokeWeight?: number;
+    cornerRadius?: number;
   };
   create_ellipse: {
     x: number;
