@@ -1,0 +1,15 @@
+Use the Singapore Airlines UX Writing Guidelines from the 'uxwa.prompt.md' file to copywrite the selected frame in Figma. Apply all changes to achieve full SIA compliance.
+ 
+## Process
+ 
+1. **Read Guidelines**: First, read and understand the complete Singapore Airlines UX Writing Guidelines from 'uxwa.prompt.md' in the workspace
+ 
+2. **Analyze Frame**: Get the selected frame and scan all text nodes within it
+ 
+3. **Apply SIA Standards**: Rewrite all text content according to the guidelines you've read
+ 
+4. **Update Figma**: Apply the changes to the Figma frame
+ 
+## Expected Outcome
+ 
+All text content in the selected frame will be rewritten to comply with Singapore Airlines UX writing standards, maintaining design integrity while improving content quality.

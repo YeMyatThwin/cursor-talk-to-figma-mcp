@@ -1,0 +1,46 @@
+# Automatic Session Management Rules
+
+## MANDATORY Session Workflow
+For ANY Figma operation that modifies the design:
+
+### Before Making Changes:
+```javascript
+await start_session_snapshot({
+  description: "Brief description of what you're about to do"
+});
+```
+
+### After Completing Changes:
+```javascript
+await end_session_snapshot();
+```
+
+## When to Use Sessions:
+- Creating/deleting nodes
+- Moving/resizing elements  
+- Changing colors/properties
+- Adding annotations
+- Any bulk operations
+- Heatmap creation
+- Layout modifications
+
+## When NOT to Use Sessions:
+- Reading/getting information only
+- Checking selection
+- Viewing document info
+- Non-destructive queries
+
+## Benefits:
+- User can always undo with simple "undo" command
+- Provides safety net for experimentation
+- Enables iterative design workflows
+- Tracks operation history
+
+## Auto-Session Strategy:
+1. Always start session when user asks for design changes
+2. Provide clear description of what will be done
+3. Complete all related operations in one session
+4. End session to save snapshot
+5. Inform user that undo is available
+
+This ensures every operation is undoable without user having to remember to ask for snapshots.

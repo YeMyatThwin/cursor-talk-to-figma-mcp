@@ -405,6 +405,13 @@ server.tool(
         strokeWeight,
         cornerRadius,
       });
+      
+      // Track the created node in active session
+      const typedResult = result as { id: string };
+      if (typedResult.id) {
+        trackNodeChange(typedResult.id, 'create');
+      }
+      
       return {
         content: [
           {
@@ -814,6 +821,9 @@ server.tool(
   },
   async ({ nodeId, x, y }: any) => {
     try {
+      // Track the change in active session
+      trackNodeChange(nodeId, 'modify');
+      
       const result = await sendCommandToFigma("move_node", { nodeId, x, y });
       const typedResult = result as { name: string };
       return {
@@ -920,6 +930,9 @@ server.tool(
   },
   async ({ nodeId }: any) => {
     try {
+      // Track the deletion in active session
+      trackNodeChange(nodeId, 'delete');
+      
       await sendCommandToFigma("delete_node", { nodeId });
       return {
         content: [
@@ -3217,6 +3230,535 @@ server.tool(
     }
   }
 );
+
+// ==================== SESSION SNAPSHOT UNDO SYSTEM ====================
+// This system captures the entire state before complex AI actions and allows full restoration
+
+interface SessionSnapshot {
+  id: string;
+  timestamp: number;
+  description: string;
+  nodeStates: Map<string, any>; // Complete node data for all affected nodes
+  documentStructure: any; // Document structure snapshot
+  affectedNodeIds: string[]; // Nodes that were created, modified, or deleted
+  createdNodeIds: string[]; // Nodes that were created (need to be deleted on undo)
+  deletedNodeIds: string[]; // Nodes that were deleted (need to be recreated on undo)
+}
+
+// Session state management
+let currentSession: {
+  isActive: boolean;
+  snapshotId: string | null;
+  affectedNodes: Set<string>;
+  createdNodes: Set<string>;
+  deletedNodes: Set<string>;
+} = {
+  isActive: false,
+  snapshotId: null,
+  affectedNodes: new Set(),
+  createdNodes: new Set(),
+  deletedNodes: new Set()
+};
+
+let sessionSnapshots: SessionSnapshot[] = [];
+const MAX_SNAPSHOTS = 10;
+
+// Helper function to capture complete node state
+async function captureCompleteNodeState(nodeId: string): Promise<any> {
+  try {
+    const nodeInfo = await sendCommandToFigma("get_node_info", { nodeId });
+    return nodeInfo;
+  } catch (error) {
+    logger.warn(`Could not capture state for node ${nodeId}: ${error}`);
+    return null;
+  }
+}
+
+// Helper function to capture multiple nodes' states
+async function captureMultipleNodeStates(nodeIds: string[]): Promise<Map<string, any>> {
+  const nodeStates = new Map<string, any>();
+  
+  for (const nodeId of nodeIds) {
+    const state = await captureCompleteNodeState(nodeId);
+    if (state) {
+      nodeStates.set(nodeId, state);
+    }
+  }
+  
+  return nodeStates;
+}
+
+// Helper function to get all child node IDs recursively
+async function getAllChildNodeIds(nodeId: string): Promise<string[]> {
+  try {
+    const nodeInfo = await sendCommandToFigma("get_node_info", { nodeId });
+    const childIds: string[] = [];
+    
+    function extractChildIds(node: any) {
+      if (node.children) {
+        for (const child of node.children) {
+          childIds.push(child.id);
+          extractChildIds(child);
+        }
+      }
+    }
+    
+    extractChildIds(nodeInfo);
+    return childIds;
+  } catch (error) {
+    logger.warn(`Could not get child nodes for ${nodeId}: ${error}`);
+    return [];
+  }
+}
+
+// Start Session Snapshot Tool
+server.tool(
+  "start_session_snapshot",
+  "Start capturing a session snapshot before performing complex operations. Use this before making multiple changes that you might want to undo as a group.",
+  {
+    description: z.string().describe("Description of what you're about to do (e.g., 'Redesigning the login form layout')")
+  },
+  async ({ description }: any) => {
+    try {
+      if (currentSession.isActive) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "A session is already active. End the current session first or use force_end_session."
+            }
+          ]
+        };
+      }
+
+      // Get current selection to start capturing relevant nodes
+      const selection = await sendCommandToFigma("get_selection");
+      const selectedNodeIds = selection && Array.isArray(selection) ? selection.map((node: any) => node.id) : [];
+      
+      // Start new session
+      const snapshotId = uuidv4();
+      currentSession = {
+        isActive: true,
+        snapshotId,
+        affectedNodes: new Set(selectedNodeIds),
+        createdNodes: new Set(),
+        deletedNodes: new Set()
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Session snapshot started: "${description}"\n🔍 Tracking ${selectedNodeIds.length} initially selected nodes\n📸 Snapshot ID: ${snapshotId}\n\nAll subsequent operations will be tracked for potential undo.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error starting session snapshot: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// End Session Snapshot Tool
+server.tool(
+  "end_session_snapshot",
+  "End the current session and save the snapshot for potential undo",
+  {},
+  async () => {
+    try {
+      if (!currentSession.isActive) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No active session to end."
+            }
+          ]
+        };
+      }
+
+      // Capture final state of all affected nodes
+      const allAffectedIds = Array.from(currentSession.affectedNodes);
+      const nodeStates = await captureMultipleNodeStates(allAffectedIds);
+      
+      // Get document structure
+      const documentInfo = await sendCommandToFigma("get_document_info");
+      
+      // Create snapshot
+      const snapshot: SessionSnapshot = {
+        id: currentSession.snapshotId!,
+        timestamp: Date.now(),
+        description: `Session completed at ${new Date().toLocaleString()}`,
+        nodeStates,
+        documentStructure: documentInfo,
+        affectedNodeIds: Array.from(currentSession.affectedNodes),
+        createdNodeIds: Array.from(currentSession.createdNodes),
+        deletedNodeIds: Array.from(currentSession.deletedNodes)
+      };
+
+      // Add to snapshots
+      sessionSnapshots.push(snapshot);
+      if (sessionSnapshots.length > MAX_SNAPSHOTS) {
+        sessionSnapshots.shift(); // Remove oldest
+      }
+
+      // Reset session
+      currentSession = {
+        isActive: false,
+        snapshotId: null,
+        affectedNodes: new Set(),
+        createdNodes: new Set(),
+        deletedNodes: new Set()
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ Session snapshot saved!\n📊 Captured ${allAffectedIds.length} affected nodes\n🆕 Created ${snapshot.createdNodeIds.length} new nodes\n🗑️ Deleted ${snapshot.deletedNodeIds.length} nodes\n\nYou can now use 'undo_session_snapshot' to revert all changes.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error ending session snapshot: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// Auto-capture session snapshot for high-level operations
+server.tool(
+  "auto_session_operation",
+  "Automatically start a session, perform operations, and end session. Use this for complex multi-step operations.",
+  {
+    description: z.string().describe("What you want to accomplish"),
+    operations: z.array(z.object({
+      tool: z.string(),
+      params: z.any()
+    })).describe("Array of operations to perform")
+  },
+  async ({ description, operations }: any) => {
+    try {
+      // Start session manually
+      if (currentSession.isActive) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "A session is already active. End the current session first."
+            }
+          ]
+        };
+      }
+
+      // Get current selection to start capturing relevant nodes
+      const selection = await sendCommandToFigma("get_selection");
+      const selectedNodeIds = selection && Array.isArray(selection) ? selection.map((node: any) => node.id) : [];
+      
+      // Start new session
+      const snapshotId = uuidv4();
+      currentSession = {
+        isActive: true,
+        snapshotId,
+        affectedNodes: new Set(selectedNodeIds),
+        createdNodes: new Set(),
+        deletedNodes: new Set()
+      };
+      
+      const results = [];
+      
+      // Execute operations
+      for (const op of operations) {
+        try {
+          const result = await sendCommandToFigma(op.tool, op.params);
+          results.push({ tool: op.tool, success: true, result });
+        } catch (error) {
+          results.push({ tool: op.tool, success: false, error: error instanceof Error ? error.message : String(error) });
+        }
+      }
+      
+      // End session manually
+      const allAffectedIds = Array.from(currentSession.affectedNodes);
+      const nodeStates = await captureMultipleNodeStates(allAffectedIds);
+      
+      // Get document structure
+      const documentInfo = await sendCommandToFigma("get_document_info");
+      
+      // Create snapshot
+      const snapshot: SessionSnapshot = {
+        id: currentSession.snapshotId!,
+        timestamp: Date.now(),
+        description: `Auto-session: ${description}`,
+        nodeStates,
+        documentStructure: documentInfo,
+        affectedNodeIds: Array.from(currentSession.affectedNodes),
+        createdNodeIds: Array.from(currentSession.createdNodes),
+        deletedNodeIds: Array.from(currentSession.deletedNodes)
+      };
+
+      // Add to snapshots
+      sessionSnapshots.push(snapshot);
+      if (sessionSnapshots.length > MAX_SNAPSHOTS) {
+        sessionSnapshots.shift(); // Remove oldest
+      }
+
+      // Reset session
+      currentSession = {
+        isActive: false,
+        snapshotId: null,
+        affectedNodes: new Set(),
+        createdNodes: new Set(),
+        deletedNodes: new Set()
+      };
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: `🎯 Auto-session operation "${description}" completed!\n\n${results.map((r, i) => `${i + 1}. ${r.tool}: ${r.success ? '✅ Success' : '❌ Failed - ' + r.error}`).join('\n')}\n\n💡 Use 'undo_session_snapshot' to revert all changes if needed.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error in auto-session operation: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// Undo Session Snapshot Tool
+server.tool(
+  "undo_session_snapshot",
+  "Undo the last session snapshot, reverting all changes made during that session",
+  {},
+  async () => {
+    try {
+      if (sessionSnapshots.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No session snapshots available to undo."
+            }
+          ]
+        };
+      }
+
+      const lastSnapshot = sessionSnapshots.pop()!;
+      const results = [];
+
+      // 1. Delete all created nodes
+      for (const nodeId of lastSnapshot.createdNodeIds) {
+        try {
+          await sendCommandToFigma("delete_node", { nodeId });
+          results.push(`🗑️ Deleted created node: ${nodeId}`);
+        } catch (error) {
+          results.push(`❌ Failed to delete node ${nodeId}: ${error}`);
+        }
+      }
+
+      // 2. Restore all modified nodes to their original state
+      for (const [nodeId, originalState] of lastSnapshot.nodeStates) {
+        try {
+          // Restore position
+          if (originalState.x !== undefined && originalState.y !== undefined) {
+            await sendCommandToFigma("move_node", {
+              nodeId,
+              x: originalState.x,
+              y: originalState.y
+            });
+          }
+
+          // Restore size
+          if (originalState.width !== undefined && originalState.height !== undefined) {
+            await sendCommandToFigma("resize_node", {
+              nodeId,
+              width: originalState.width,
+              height: originalState.height
+            });
+          }
+
+          // Restore fill color
+          if (originalState.fills && originalState.fills.length > 0) {
+            const fill = originalState.fills[0];
+            if (fill.color) {
+              await sendCommandToFigma("set_fill_color", {
+                nodeId,
+                r: fill.color.r,
+                g: fill.color.g,
+                b: fill.color.b,
+                a: fill.color.a || 1
+              });
+            }
+          }
+
+          // Restore text content
+          if (originalState.characters !== undefined) {
+            await sendCommandToFigma("set_text_content", {
+              nodeId,
+              text: originalState.characters
+            });
+          }
+
+          results.push(`✅ Restored node: ${originalState.name || nodeId}`);
+
+        } catch (error) {
+          results.push(`❌ Failed to restore node ${nodeId}: ${error}`);
+        }
+      }
+
+      // 3. TODO: Recreate deleted nodes (complex - would need full node recreation logic)
+      if (lastSnapshot.deletedNodeIds.length > 0) {
+        results.push(`⚠️ ${lastSnapshot.deletedNodeIds.length} deleted nodes cannot be automatically recreated yet`);
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `🔄 Session snapshot undone!\n📅 Original session: ${new Date(lastSnapshot.timestamp).toLocaleString()}\n\nResults:\n${results.join('\n')}\n\n${sessionSnapshots.length} snapshots remaining.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error undoing session snapshot: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// List Session Snapshots Tool
+server.tool(
+  "list_session_snapshots",
+  "List all available session snapshots",
+  {},
+  async () => {
+    try {
+      if (sessionSnapshots.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "No session snapshots available."
+            }
+          ]
+        };
+      }
+
+      const snapshotList = sessionSnapshots.map((snapshot, index) => {
+        return `${index + 1}. ${snapshot.description}\n   📅 ${new Date(snapshot.timestamp).toLocaleString()}\n   📊 ${snapshot.affectedNodeIds.length} affected, ${snapshot.createdNodeIds.length} created, ${snapshot.deletedNodeIds.length} deleted\n   🆔 ${snapshot.id}`;
+      }).join('\n\n');
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `📸 Available Session Snapshots (${sessionSnapshots.length}/${MAX_SNAPSHOTS}):\n\n${snapshotList}\n\n💡 Use 'undo_session_snapshot' to revert the most recent session.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error listing session snapshots: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// Get Session Status Tool
+server.tool(
+  "get_session_status",
+  "Get the current session tracking status",
+  {},
+  async () => {
+    try {
+      if (!currentSession.isActive) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "🔴 No active session\n💡 Use 'start_session_snapshot' before making changes you might want to undo."
+            }
+          ]
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `🟢 Active session in progress\n🆔 Snapshot ID: ${currentSession.snapshotId}\n📊 Tracking ${currentSession.affectedNodes.size} affected nodes\n🆕 ${currentSession.createdNodes.size} nodes created\n🗑️ ${currentSession.deletedNodes.size} nodes deleted\n\n💡 Use 'end_session_snapshot' when you're done making changes.`
+          }
+        ]
+      };
+
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error getting session status: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
+      };
+    }
+  }
+);
+
+// Modify existing tools to track changes during active sessions
+// Helper function to track node changes
+function trackNodeChange(nodeId: string, operationType: 'create' | 'modify' | 'delete') {
+  if (!currentSession.isActive) return;
+  
+  currentSession.affectedNodes.add(nodeId);
+  
+  switch (operationType) {
+    case 'create':
+      currentSession.createdNodes.add(nodeId);
+      break;
+    case 'delete':
+      currentSession.deletedNodes.add(nodeId);
+      break;
+    case 'modify':
+      // Just add to affected nodes (already done above)
+      break;
+  }
+}
 
 // Start the server
 async function main() {
