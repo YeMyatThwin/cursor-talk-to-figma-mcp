@@ -235,6 +235,8 @@ async function handleCommand(command, params) {
       return await setFocus(params);
     case "set_selections":
       return await setSelections(params);
+    case "detach_instance":
+      return await detachInstance(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -1490,6 +1492,64 @@ async function setCornerRadius(params) {
       "bottomRightRadius" in node ? node.bottomRightRadius : undefined,
     bottomLeftRadius:
       "bottomLeftRadius" in node ? node.bottomLeftRadius : undefined,
+  };
+}
+
+async function detachInstance(params) {
+  const { nodeId } = params || {};
+
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+
+  const node = await figma.getNodeByIdAsync(nodeId);
+  if (!node) {
+    throw new Error(`Node not found with ID: ${nodeId}`);
+  }
+
+  // Check if node is an instance
+  if (node.type !== "INSTANCE") {
+    throw new Error(`Node is not an instance. Node type: ${node.type}`);
+  }
+
+  // Get main component info before detaching
+  const mainComponent = await node.getMainComponentAsync();
+  let mainComponentInfo = null;
+  if (mainComponent) {
+    mainComponentInfo = {
+      id: mainComponent.id,
+      name: mainComponent.name,
+      key: mainComponent.key
+    };
+  }
+
+  // Store instance info before detaching
+  const instanceInfo = {
+    id: node.id,
+    name: node.name,
+    x: node.x,
+    y: node.y,
+    width: node.width,
+    height: node.height
+  };
+
+  // Detach the instance - this returns a FrameNode
+  const detachedFrame = node.detachInstance();
+
+  return {
+    success: true,
+    message: "Successfully detached instance \"" + instanceInfo.name + "\" from component \"" + (mainComponentInfo ? mainComponentInfo.name : 'unknown') + "\"",
+    detachedNode: {
+      id: detachedFrame.id,
+      name: detachedFrame.name,
+      type: detachedFrame.type,
+      x: detachedFrame.x,
+      y: detachedFrame.y,
+      width: detachedFrame.width,
+      height: detachedFrame.height
+    },
+    originalInstance: instanceInfo,
+    mainComponent: mainComponentInfo
   };
 }
 
