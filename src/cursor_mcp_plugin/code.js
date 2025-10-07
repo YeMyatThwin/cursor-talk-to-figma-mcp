@@ -135,6 +135,8 @@ async function handleCommand(command, params) {
       return await setStrokeColor(params);
     case "move_node":
       return await moveNode(params);
+    case "move_to_parent":
+      return await moveToParent(params);
     case "resize_node":
       return await resizeNode(params);
     case "delete_node":
@@ -1175,6 +1177,61 @@ async function moveNode(params) {
     name: node.name,
     x: node.x,
     y: node.y,
+  };
+}
+
+async function moveToParent(params) {
+  const { nodeId, parentId, x, y } = params || {};
+
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+
+  if (!parentId) {
+    throw new Error("Missing parentId parameter");
+  }
+
+  const node = await figma.getNodeByIdAsync(nodeId);
+  if (!node) {
+    throw new Error(`Node not found with ID: ${nodeId}`);
+  }
+
+  const newParent = await figma.getNodeByIdAsync(parentId);
+  if (!newParent) {
+    throw new Error(`Parent node not found with ID: ${parentId}`);
+  }
+
+  if (!("appendChild" in newParent)) {
+    throw new Error(`Parent node does not support children: ${parentId}`);
+  }
+
+  // Store original position for reference
+  const originalX = node.x;
+  const originalY = node.y;
+
+  // Remove from current parent
+  node.remove();
+
+  // Add to new parent
+  newParent.appendChild(node);
+
+  // Position in new parent if coordinates provided
+  if (x !== undefined && y !== undefined) {
+    if (!("x" in node) || !("y" in node)) {
+      throw new Error(`Node does not support position: ${nodeId}`);
+    }
+    node.x = x;
+    node.y = y;
+  }
+
+  return {
+    id: node.id,
+    name: node.name,
+    x: node.x,
+    y: node.y,
+    previousX: originalX,
+    previousY: originalY,
+    parentId: node.parent ? node.parent.id : undefined,
   };
 }
 

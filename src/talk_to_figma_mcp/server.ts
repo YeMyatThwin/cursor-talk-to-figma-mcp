@@ -840,6 +840,43 @@ server.tool(
   }
 );
 
+// Move Node to Parent Tool
+server.tool(
+  "move_to_parent",
+  "Move a node to a different parent container in Figma",
+  {
+    nodeId: z.string().describe("The ID of the node to move"),
+    parentId: z.string().describe("The ID of the target parent container"),
+    x: z.number().optional().describe("New X position within the parent (optional)"),
+    y: z.number().optional().describe("New Y position within the parent (optional)"),
+  },
+  async ({ nodeId, parentId, x, y }: any) => {
+    try {
+      const result = await sendCommandToFigma("move_to_parent", { nodeId, parentId, x, y });
+      const typedResult = result as { name: string; parentId: string; x: number; y: number };
+      const positionText = (x !== undefined && y !== undefined) ? ` to position (${x}, ${y})` : '';
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Moved node "${typedResult.name}" to parent "${typedResult.parentId}"${positionText}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error moving node to parent: ${error instanceof Error ? error.message : String(error)
+              }`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Clone Node Tool
 server.tool(
   "clone_node",
@@ -2221,6 +2258,7 @@ type FigmaCommand =
   | "set_fill_color"
   | "set_stroke_color"
   | "move_node"
+  | "move_to_parent"
   | "resize_node"
   | "delete_node"
   | "delete_multiple_nodes"
@@ -2321,6 +2359,12 @@ type CommandParams = {
     nodeId: string;
     x: number;
     y: number;
+  };
+  move_to_parent: {
+    nodeId: string;
+    parentId: string;
+    x?: number;
+    y?: number;
   };
   resize_node: {
     nodeId: string;
