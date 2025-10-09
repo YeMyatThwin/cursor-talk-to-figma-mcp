@@ -2267,7 +2267,8 @@ type FigmaCommand =
   | "create_connections"
   | "set_focus"
   | "set_selections"
-  | "detach_instance";
+  | "detach_instance"
+  | "insert_image_from_url";
 
 type CommandParams = {
   get_document_info: Record<string, never>;
@@ -2436,6 +2437,9 @@ type CommandParams = {
   };
   detach_instance: {
     nodeId: string;
+  };
+  insert_image_from_url: {
+    url: string;
   };
 
 };
@@ -2745,6 +2749,50 @@ server.tool(
               }`,
           },
         ],
+      };
+    }
+  }
+);
+
+// Insert Image from URL Tool
+server.tool(
+  "insert_image_from_url",
+  "Insert an image from a URL into the selected frame in Figma",
+  {
+    url: z.string().describe("The URL of the image to insert")
+  },
+  async ({ url }: any) => {
+    try {
+      const result = await sendCommandToFigma("insert_image_from_url", {
+        url
+      });
+      const typedResult = result as {
+        success: boolean;
+        frameId: string;
+        frameName: string;
+        imageId: string;
+        url: string;
+        message: string;
+      };
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: typedResult.success
+              ? `${typedResult.message}\n\nFrame: ${typedResult.frameName} (${typedResult.frameId})\nImage ID: ${typedResult.imageId}`
+              : `Failed to insert image: ${typedResult.message}`
+          }
+        ]
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error inserting image from URL: ${error instanceof Error ? error.message : String(error)}`
+          }
+        ]
       };
     }
   }

@@ -237,6 +237,8 @@ async function handleCommand(command, params) {
       return await setSelections(params);
     case "detach_instance":
       return await detachInstance(params);
+    case "insert_image_from_url":
+      return await insertImageFromUrl(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -4257,4 +4259,80 @@ async function setSelections(params) {
     notFoundIds: notFoundIds,
     message: `Selected ${nodes.length} nodes${notFoundIds.length > 0 ? ` (${notFoundIds.length} not found)` : ''}`
   };
+}
+
+// Insert image from URL into selected frame
+async function insertImageFromUrl(params) {
+  if (!params || !params.url) {
+    throw new Error("Missing URL parameter");
+  }
+
+  const url = params.url;
+  console.log(`Inserting image from URL: ${url}`);
+
+  // Get current selection
+  const selection = figma.currentPage.selection;
+
+  if (selection.length === 0) {
+    throw new Error("No frame selected. Please select a frame to insert the image into.");
+  }
+
+  // Find the first frame in selection
+  let targetFrame = null;
+  for (const node of selection) {
+    if (node.type === 'FRAME') {
+      targetFrame = node;
+      break;
+    }
+  }
+
+  if (!targetFrame) {
+    throw new Error("No frame found in selection. Please select a frame to insert the image into.");
+  }
+
+  try {
+    // Fetch image from URL
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    const imageBuffer = await response.arrayBuffer();
+    const imageBytes = new Uint8Array(imageBuffer);
+
+    // Create image hash for Figma
+    const imageHash = await figma.createImageAsync(imageBytes);
+
+    // Create a rectangle with the image fill
+    const imageRect = figma.createRectangle();
+    imageRect.resize(targetFrame.width, targetFrame.height);
+    imageRect.fills = [{
+      type: 'IMAGE',
+      imageHash: imageHash,
+      scaleMode: 'FILL'
+    }];
+
+    // Position the image in the frame
+    imageRect.x = targetFrame.x;
+    imageRect.y = targetFrame.y;
+
+    // Add the image to the frame
+    targetFrame.appendChild(imageRect);
+
+    // Select the new image
+    figma.currentPage.selection = [imageRect];
+
+    return {
+      success: true,
+      frameId: targetFrame.id,
+      frameName: targetFrame.name,
+      imageId: imageRect.id,
+      url: url,
+      message: `Image inserted into frame "${targetFrame.name}" from ${url}`
+    };
+
+  } catch (error) {
+    console.error('Error inserting image:', error);
+    throw new Error(`Failed to insert image from URL: ${error.message}`);
+  }
 }

@@ -3,6 +3,9 @@
     "TalkToFigma": {
       "command": "bun",
       "args": ["run", "./src/talk_to_figma_mcp/server.ts"]
+    },
+    "FigmaDevMCP": {
+      "url": "http://127.0.0.1:3845/mcp"
     }
   }
 }
