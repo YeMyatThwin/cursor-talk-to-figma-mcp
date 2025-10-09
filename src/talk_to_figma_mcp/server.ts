@@ -223,7 +223,7 @@ function rgbaToHex(color: any): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}${a === 255 ? '' : a.toString(16).padStart(2, '0')}`;
 }
 
-function filterFigmaNode(node: any) {
+function filterFigmaNode(node: any, parent?: any) {
   // Skip VECTOR type nodes
   if (node.type === "VECTOR") {
     return null;
@@ -234,6 +234,22 @@ function filterFigmaNode(node: any) {
     name: node.name,
     type: node.type,
   };
+
+  // Add parent information and index if parent is provided
+  if (parent) {
+    filtered.parent = {
+      id: parent.id,
+      name: parent.name,
+      type: parent.type,
+    };
+    // Calculate index within parent
+    if (parent.children) {
+      const index = parent.children.findIndex((child: any) => child.id === node.id);
+      if (index !== -1) {
+        filtered.indexInParent = index;
+      }
+    }
+  }
 
   if (node.fills && node.fills.length > 0) {
     filtered.fills = node.fills.map((fill: any) => {
@@ -305,7 +321,7 @@ function filterFigmaNode(node: any) {
 
   if (node.children) {
     filtered.children = node.children
-      .map((child: any) => filterFigmaNode(child))
+      .map((child: any) => filterFigmaNode(child, node))
       .filter((child: any) => child !== null); // Remove null children (VECTOR nodes)
   }
 
@@ -840,43 +856,6 @@ server.tool(
   }
 );
 
-// Move Node to Parent Tool
-server.tool(
-  "move_to_parent",
-  "Move a node to a different parent container in Figma",
-  {
-    nodeId: z.string().describe("The ID of the node to move"),
-    parentId: z.string().describe("The ID of the target parent container"),
-    x: z.number().optional().describe("New X position within the parent (optional)"),
-    y: z.number().optional().describe("New Y position within the parent (optional)"),
-  },
-  async ({ nodeId, parentId, x, y }: any) => {
-    try {
-      const result = await sendCommandToFigma("move_to_parent", { nodeId, parentId, x, y });
-      const typedResult = result as { name: string; parentId: string; x: number; y: number };
-      const positionText = (x !== undefined && y !== undefined) ? ` to position (${x}, ${y})` : '';
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Moved node "${typedResult.name}" to parent "${typedResult.parentId}"${positionText}`,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error moving node to parent: ${error instanceof Error ? error.message : String(error)
-              }`,
-          },
-        ],
-      };
-    }
-  }
-);
-
 // Clone Node Tool
 server.tool(
   "clone_node",
@@ -884,17 +863,19 @@ server.tool(
   {
     nodeId: z.string().describe("The ID of the node to clone"),
     x: z.number().optional().describe("New X position for the clone"),
-    y: z.number().optional().describe("New Y position for the clone")
+    y: z.number().optional().describe("New Y position for the clone"),
+    parentId: z.string().optional().describe("Optional parent node ID to append the clone to"),
+    insertAtIndex: z.number().optional().describe("Index position to insert the clone within the parent (0-based)")
   },
-  async ({ nodeId, x, y }: any) => {
+  async ({ nodeId, x, y, parentId, insertAtIndex }: any) => {
     try {
-      const result = await sendCommandToFigma('clone_node', { nodeId, x, y });
+      const result = await sendCommandToFigma('clone_node', { nodeId, x, y, parentId, insertAtIndex });
       const typedResult = result as { name: string, id: string };
       return {
         content: [
           {
             type: "text",
-            text: `Cloned node "${typedResult.name}" with new ID: ${typedResult.id}${x !== undefined && y !== undefined ? ` at position (${x}, ${y})` : ''}`
+            text: `Cloned node "${typedResult.name}" with new ID: ${typedResult.id}${x !== undefined && y !== undefined ? ` at position (${x}, ${y})` : ''}${parentId ? ` under parent ${parentId}` : ''}${insertAtIndex !== undefined ? ` at index ${insertAtIndex}` : ''}`
           }
         ]
       };
@@ -911,7 +892,6 @@ server.tool(
   }
 );
 
-// Resize Node Tool
 server.tool(
   "resize_node",
   "Resize a node in Figma",
@@ -2258,7 +2238,6 @@ type FigmaCommand =
   | "set_fill_color"
   | "set_stroke_color"
   | "move_node"
-  | "move_to_parent"
   | "resize_node"
   | "delete_node"
   | "delete_multiple_nodes"
@@ -2360,12 +2339,6 @@ type CommandParams = {
     x: number;
     y: number;
   };
-  move_to_parent: {
-    nodeId: string;
-    parentId: string;
-    x?: number;
-    y?: number;
-  };
   resize_node: {
     nodeId: string;
     width: number;
@@ -2412,6 +2385,8 @@ type CommandParams = {
     nodeId: string;
     x?: number;
     y?: number;
+    parentId?: string;
+    insertAtIndex?: number;
   };
   set_text_content: {
     nodeId: string;

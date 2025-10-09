@@ -159,7 +159,7 @@ get_node_info(nodeId: "node-id")  // optional
 
 \`\`\`
 // Clone the node to create a safe copy
-clone_node(nodeId: "selected-node-id", x: [new-x], y: [new-y])
+clone_node(nodeId: "selected-node-id", x: [new-x], y: [new-y], parentId: "optional-parent-id")
 
 // Replace text chunk by chunk
 set_multiple_text_contents(
@@ -663,10 +663,10 @@ Important Requirements:
     }
   },
 
-  snap_writing: {
-    title: "Singapore Airlines UX Writing Assistant with SIA Compliance",
+  copy_writing: {
+    title: "UX Writing Assistant with Compliance Guidelines",
     description:
-      "Use Singapore Airlines guidelines to copywrite selected Figma frames with full SIA compliance",
+      "Use UX writing guidelines to copywrite selected Figma frames with full compliance",
     inputSchema: z.object({}),
     handler: async () => {
       return {
@@ -675,25 +675,25 @@ Important Requirements:
             role: "assistant" as const,
             content: {
               type: "text" as const,
-              text: `# Singapore Airlines UX Writing Assistant
+              text: `# UX Writing Assistant
 
 ## Task
 
-Use the Singapore Airlines UX Writing Guidelines from the 'uxwa.prompt.md' file to copywrite the selected frame in Figma. Apply all changes to achieve full SIA compliance.
+Use the UX Writing Guidelines from the 'uxwa.prompt.md' file to copywrite the selected frame in Figma. Apply all changes to achieve full compliance.
 
 ## Process
 
-1. **Read Guidelines**: First, read and understand the complete Singapore Airlines UX Writing Guidelines from 'uxwa.prompt.md' in the workspace
+1. **Read Guidelines**: First, read and understand the complete UX Writing Guidelines from 'uxwa.prompt.md' in the workspace
 
 2. **Analyze Frame**: Get the selected frame and scan all text nodes within it
 
-3. **Apply SIA Standards**: Rewrite all text content according to the guidelines you've read
+3. **Apply Standards**: Rewrite all text content according to the guidelines you've read
 
 4. **Update Figma**: Apply the changes to the Figma frame
 
 ## Expected Outcome
 
-All text content in the selected frame will be rewritten to comply with Singapore Airlines UX writing standards, maintaining design integrity while improving content quality.`,
+All text content in the selected frame will be rewritten to comply with UX writing standards, maintaining design integrity while improving content quality.`,
             }
 
           },

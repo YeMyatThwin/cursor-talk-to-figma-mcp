@@ -135,8 +135,6 @@ async function handleCommand(command, params) {
       return await setStrokeColor(params);
     case "move_node":
       return await moveNode(params);
-    case "move_to_parent":
-      return await moveToParent(params);
     case "resize_node":
       return await resizeNode(params);
     case "delete_node":
@@ -408,6 +406,22 @@ async function getNodeInfo(nodeId) {
   const response = await node.exportAsync({
     format: "JSON_REST_V1",
   });
+
+  // Add parent information and index to the response
+  if (node.parent) {
+    response.document.parent = {
+      id: node.parent.id,
+      name: node.parent.name,
+      type: node.parent.type,
+    };
+    // Calculate index within parent
+    if (node.parent.children) {
+      const index = node.parent.children.findIndex(child => child.id === node.id);
+      if (index !== -1) {
+        response.document.indexInParent = index;
+      }
+    }
+  }
 
   return filterFigmaNode(response.document);
 }
@@ -1180,61 +1194,6 @@ async function moveNode(params) {
   };
 }
 
-async function moveToParent(params) {
-  const { nodeId, parentId, x, y } = params || {};
-
-  if (!nodeId) {
-    throw new Error("Missing nodeId parameter");
-  }
-
-  if (!parentId) {
-    throw new Error("Missing parentId parameter");
-  }
-
-  const node = await figma.getNodeByIdAsync(nodeId);
-  if (!node) {
-    throw new Error(`Node not found with ID: ${nodeId}`);
-  }
-
-  const newParent = await figma.getNodeByIdAsync(parentId);
-  if (!newParent) {
-    throw new Error(`Parent node not found with ID: ${parentId}`);
-  }
-
-  if (!("appendChild" in newParent)) {
-    throw new Error(`Parent node does not support children: ${parentId}`);
-  }
-
-  // Store original position for reference
-  const originalX = node.x;
-  const originalY = node.y;
-
-  // Remove from current parent
-  node.remove();
-
-  // Add to new parent
-  newParent.appendChild(node);
-
-  // Position in new parent if coordinates provided
-  if (x !== undefined && y !== undefined) {
-    if (!("x" in node) || !("y" in node)) {
-      throw new Error(`Node does not support position: ${nodeId}`);
-    }
-    node.x = x;
-    node.y = y;
-  }
-
-  return {
-    id: node.id,
-    name: node.name,
-    x: node.x,
-    y: node.y,
-    previousX: originalX,
-    previousY: originalY,
-    parentId: node.parent ? node.parent.id : undefined,
-  };
-}
-
 async function resizeNode(params) {
   const { nodeId, width, height } = params || {};
 
@@ -1886,7 +1845,7 @@ const setCharactersWithSmartMatchFont = async (
 
 // Add the cloneNode function implementation
 async function cloneNode(params) {
-  const { nodeId, x, y } = params || {};
+  const { nodeId, x, y, parentId, insertAtIndex } = params || {};
 
   if (!nodeId) {
     throw new Error("Missing nodeId parameter");
@@ -1909,11 +1868,29 @@ async function cloneNode(params) {
     clone.y = y;
   }
 
-  // Add the clone to the same parent as the original node
-  if (node.parent) {
-    node.parent.appendChild(clone);
+  // Add the clone to the specified parent or the same parent as the original node
+  if (parentId) {
+    const parentNode = await figma.getNodeByIdAsync(parentId);
+    if (!parentNode) {
+      throw new Error(`Parent node not found with ID: ${parentId}`);
+    }
+    if (insertAtIndex !== undefined && "insertChild" in parentNode) {
+      parentNode.insertChild(insertAtIndex, clone);
+    } else {
+      parentNode.appendChild(clone);
+    }
+  } else if (node.parent) {
+    if (insertAtIndex !== undefined && "insertChild" in node.parent) {
+      node.parent.insertChild(insertAtIndex, clone);
+    } else {
+      node.parent.appendChild(clone);
+    }
   } else {
-    figma.currentPage.appendChild(clone);
+    if (insertAtIndex !== undefined && "insertChild" in figma.currentPage) {
+      figma.currentPage.insertChild(insertAtIndex, clone);
+    } else {
+      figma.currentPage.appendChild(clone);
+    }
   }
 
   return {
