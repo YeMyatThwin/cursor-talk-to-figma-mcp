@@ -151,6 +151,8 @@ async function handleCommand(command, params) {
       return await createComponentInstance(params);
     case "export_node_as_image":
       return await exportNodeAsImage(params);
+    case "insert_image_data":
+      return await insertImageData(params);
     case "set_corner_radius":
       return await setCornerRadius(params);
     case "set_text_content":
@@ -1408,56 +1410,130 @@ async function exportNodeAsImage(params) {
     throw new Error(`Error exporting node as image: ${error.message}`);
   }
 }
-function customBase64Encode(bytes) {
-  const chars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  let base64 = "";
 
-  const byteLength = bytes.byteLength;
-  const byteRemainder = byteLength % 3;
-  const mainLength = byteLength - byteRemainder;
+async function insertImageData(params) {
+  const { imageData, frameId, x = 0, y = 0, width, height } = params || {};
 
-  let a, b, c, d;
-  let chunk;
-
-  // Main loop deals with bytes in chunks of 3
-  for (let i = 0; i < mainLength; i = i + 3) {
-    // Combine the three bytes into a single integer
-    chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
-
-    // Use bitmasks to extract 6-bit segments from the triplet
-    a = (chunk & 16515072) >> 18; // 16515072 = (2^6 - 1) << 18
-    b = (chunk & 258048) >> 12; // 258048 = (2^6 - 1) << 12
-    c = (chunk & 4032) >> 6; // 4032 = (2^6 - 1) << 6
-    d = chunk & 63; // 63 = 2^6 - 1
-
-    // Convert the raw binary segments to the appropriate ASCII encoding
-    base64 += chars[a] + chars[b] + chars[c] + chars[d];
+  if (!imageData) {
+    throw new Error("Missing imageData parameter");
   }
 
-  // Deal with the remaining bytes and padding
-  if (byteRemainder === 1) {
-    chunk = bytes[mainLength];
-
-    a = (chunk & 252) >> 2; // 252 = (2^6 - 1) << 2
-
-    // Set the 4 least significant bits to zero
-    b = (chunk & 3) << 4; // 3 = 2^2 - 1
-
-    base64 += chars[a] + chars[b] + "==";
-  } else if (byteRemainder === 2) {
-    chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
-
-    a = (chunk & 64512) >> 10; // 64512 = (2^6 - 1) << 10
-    b = (chunk & 1008) >> 4; // 1008 = (2^6 - 1) << 4
-
-    // Set the 2 least significant bits to zero
-    c = (chunk & 15) << 2; // 15 = 2^4 - 1
-
-    base64 += chars[a] + chars[b] + chars[c] + "=";
+  // Get the target frame
+  let targetFrame;
+  if (frameId) {
+    targetFrame = await figma.getNodeByIdAsync(frameId);
+    if (!targetFrame) {
+      throw new Error(`Frame not found with ID: ${frameId}`);
+    }
+    if (targetFrame.type !== 'FRAME') {
+      throw new Error(`Node with ID ${frameId} is not a frame`);
+    }
+  } else {
+    // Use the first selected frame, or create a new one if none selected
+    const selection = figma.currentPage.selection;
+    targetFrame = selection.find(node => node.type === 'FRAME');
+    if (!targetFrame) {
+      // Create a new frame if no frame is selected
+      targetFrame = figma.createFrame();
+      targetFrame.name = "Image Frame";
+      targetFrame.resize(400, 300);
+      figma.currentPage.appendChild(targetFrame);
+    }
   }
 
-  return base64;
+  try {
+    // Convert base64 to Uint8Array
+    const bytes = customBase64Decode(imageData);
+    
+    // Create image from bytes
+    const image = figma.createImage(bytes);
+    
+    // Create a rectangle to hold the image
+    const imageRect = figma.createRectangle();
+    
+    // Get image dimensions if not provided
+    let imgWidth = width;
+    let imgHeight = height;
+    
+    if (!imgWidth || !imgHeight) {
+      // Try to get natural dimensions from the image
+      try {
+        const imageSize = await image.getSizeAsync();
+        imgWidth = imgWidth || imageSize.width;
+        imgHeight = imgHeight || imageSize.height;
+      } catch (error) {
+        // Fallback to default dimensions if we can't get image size
+        imgWidth = imgWidth || 200;
+        imgHeight = imgHeight || 200;
+      }
+    }
+    
+    // Set rectangle size
+    imageRect.resize(imgWidth, imgHeight);
+    
+    // Position the rectangle
+    imageRect.x = x;
+    imageRect.y = y;
+    
+    // Apply image as fill
+    imageRect.fills = [
+      {
+        type: 'IMAGE',
+        imageHash: image.hash,
+        scaleMode: 'FILL'
+      }
+    ];
+    
+    // Add the rectangle to the frame
+    targetFrame.appendChild(imageRect);
+    
+    // Select the new image
+    figma.currentPage.selection = [imageRect];
+    
+    return {
+      nodeId: imageRect.id,
+      name: imageRect.name,
+      frameId: targetFrame.id,
+      frameName: targetFrame.name,
+      width: imgWidth,
+      height: imgHeight
+    };
+  } catch (error) {
+    throw new Error(`Error inserting image: ${error.message}`);
+  }
+}
+
+function customBase64Decode(base64) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  const lookup = {};
+  
+  // Create lookup table
+  for (let i = 0; i < chars.length; i++) {
+    lookup[chars[i]] = i;
+  }
+  
+  // Remove padding and whitespace
+  base64 = base64.replace(/=+$/, '').replace(/\s/g, '');
+  
+  const bytes = new Uint8Array(base64.length * 3 / 4);
+  let byteIndex = 0;
+  
+  for (let i = 0; i < base64.length; i += 4) {
+    const a = lookup[base64[i]];
+    const b = lookup[base64[i + 1]];
+    const c = lookup[base64[i + 2]];
+    const d = lookup[base64[i + 3]];
+    
+    bytes[byteIndex++] = (a << 2) | (b >> 4);
+    if (c !== undefined) {
+      bytes[byteIndex++] = ((b & 15) << 4) | (c >> 2);
+    }
+    if (d !== undefined) {
+      bytes[byteIndex++] = ((c & 3) << 6) | d;
+    }
+  }
+  
+  return bytes;
 }
 
 async function setCornerRadius(params) {

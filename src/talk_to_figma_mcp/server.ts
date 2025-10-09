@@ -7,6 +7,8 @@ import WebSocket from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { registerPrompts } from "./prompts.js";
 import figmaPrompts from "./prompts.js";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
 // Define TypeScript interfaces for Figma responses
 interface FigmaResponse {
@@ -1068,6 +1070,106 @@ server.tool(
             type: "text",
             text: `Error setting text content: ${error instanceof Error ? error.message : String(error)
               }`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+// Insert Image Data Tool
+server.tool(
+  "insert_image_data",
+  "Insert an image from base64 data into the selected frame in Figma",
+  {
+    imageData: z.string().describe("Base64 encoded image data"),
+    frameId: z.string().optional().describe("ID of the frame to insert the image into. If not provided, uses the currently selected frame"),
+    x: z.number().optional().describe("X position within the frame (default: 0)"),
+    y: z.number().optional().describe("Y position within the frame (default: 0)"),
+    width: z.number().optional().describe("Width of the image (default: image natural width)"),
+    height: z.number().optional().describe("Height of the image (default: image natural height)"),
+  },
+  async ({ imageData, frameId, x = 0, y = 0, width, height }: any) => {
+    try {
+      const result = await sendCommandToFigma("insert_image_data", {
+        imageData,
+        frameId,
+        x,
+        y,
+        width,
+        height,
+      });
+      const typedResult = result as { nodeId: string; name: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Successfully inserted image into frame "${typedResult.name}" with node ID: ${typedResult.nodeId}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error inserting image: ${error instanceof Error ? error.message : String(error)
+              }`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+// Insert Image From File Tool
+server.tool(
+  "insert_image_from_file",
+  "Insert an image from a PNG file into the selected frame in Figma. Automatically converts PNG to base64.",
+  {
+    filePath: z.string().describe("Path to the PNG image file (relative to project root or absolute path)"),
+    frameId: z.string().optional().describe("ID of the frame to insert the image into. If not provided, uses the currently selected frame"),
+    x: z.number().optional().describe("X position within the frame (default: 0)"),
+    y: z.number().optional().describe("Y position within the frame (default: 0)"),
+    width: z.number().optional().describe("Width of the image (default: image natural width)"),
+    height: z.number().optional().describe("Height of the image (default: image natural height)"),
+  },
+  async ({ filePath, frameId, x = 0, y = 0, width, height }: any) => {
+    try {
+      // Resolve the file path relative to the current working directory
+      const resolvedPath = resolve(process.cwd(), filePath);
+      
+      // Read the file as binary data
+      const imageBuffer = readFileSync(resolvedPath);
+      
+      // Convert to base64
+      const imageData = imageBuffer.toString('base64');
+      
+      // Call the existing insert_image_data tool
+      const result = await sendCommandToFigma("insert_image_data", {
+        imageData,
+        frameId,
+        x,
+        y,
+        width,
+        height,
+      });
+      
+      const typedResult = result as { nodeId: string; name: string; frameId: string; frameName: string; width: number; height: number };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Successfully inserted image "${filePath}" into frame "${typedResult.frameName}" with node ID: ${typedResult.nodeId}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error inserting image from file "${filePath}": ${error instanceof Error ? error.message : String(error)}`,
           },
         ],
       };
@@ -2247,6 +2349,8 @@ type FigmaCommand =
   | "get_instance_overrides"
   | "set_instance_overrides"
   | "export_node_as_image"
+  | "insert_image_data"
+  | "insert_image_from_file"
   | "join"
   | "set_corner_radius"
   | "clone_node"
@@ -2369,6 +2473,22 @@ type CommandParams = {
     nodeId: string;
     format?: "PNG" | "JPG" | "SVG" | "PDF";
     scale?: number;
+  };
+  insert_image_data: {
+    imageData: string;
+    frameId?: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+  };
+  insert_image_from_file: {
+    filePath: string;
+    frameId?: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
   };
   execute_code: {
     code: string;
