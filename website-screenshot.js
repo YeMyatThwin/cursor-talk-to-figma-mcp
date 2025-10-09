@@ -32,6 +32,6 @@ async function takeWebsiteScreenshot(url, filename) {
 
 // Take screenshot of the URL provided as argument
 const url = process.argv[2] || 'https://www.figma.com';
-const filename = process.argv[3] || 'figma-screenshot.png';
+const filename = `screenshots/${process.argv[3] || 'figma-screenshot.png'}`;
 
 takeWebsiteScreenshot(url, filename);
