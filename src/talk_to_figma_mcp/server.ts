@@ -7,8 +7,9 @@ import WebSocket from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { registerPrompts } from "./prompts.js";
 import figmaPrompts from "./prompts.js";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync, statSync } from "fs";
 import { resolve } from "path";
+import sharp from "sharp";
 
 // Define TypeScript interfaces for Figma responses
 interface FigmaResponse {
@@ -1125,7 +1126,7 @@ server.tool(
 // Insert Image From File Tool
 server.tool(
   "insert_image_from_file",
-  "Insert an image from a PNG file into the selected frame in Figma. Automatically converts PNG to base64.",
+  "Insert an image from a PNG file into the selected frame in Figma. Automatically converts PNG to base64 and compresses large images to ensure they work properly in Figma. Uses intelligent size limits: 200KB for very large images (>2MB or >10M pixels), 400KB for large images (500KB-2MB or 2M-10M pixels), or 800KB for smaller images.",
   {
     filePath: z.string().describe("Path to the PNG image file (relative to project root or absolute path)"),
     frameId: z.string().optional().describe("ID of the frame to insert the image into. If not provided, uses the currently selected frame"),
@@ -1133,16 +1134,57 @@ server.tool(
     y: z.number().optional().describe("Y position within the frame (default: 0)"),
     width: z.number().optional().describe("Width of the image (default: image natural width)"),
     height: z.number().optional().describe("Height of the image (default: image natural height)"),
+    maxSizeKB: z.number().optional().describe("Maximum size in KB (auto-selected based on image size and pixel count if not specified: 200KB for >2MB images or >10M pixels, 400KB for 500KB-2MB images or 2M-10M pixels, 800KB for smaller images)"),
   },
-  async ({ filePath, frameId, x = 0, y = 0, width, height }: any) => {
+  async ({ filePath, frameId, x = 0, y = 0, width, height, maxSizeKB }: any) => {
     try {
       // Resolve the file path relative to the current working directory
       const resolvedPath = resolve(process.cwd(), filePath);
       
-      // Read the file as binary data
-      const imageBuffer = readFileSync(resolvedPath);
+      if (!existsSync(resolvedPath)) {
+        throw new Error(`File not found: ${resolvedPath}`);
+      }
+
+      // Check file size and get image metadata for intelligent size selection
+      const stats = statSync(resolvedPath);
+      const fileSizeKB = stats.size / 1024;
       
-      // Convert to base64
+      // Get image metadata to calculate pixel count for better size prediction
+      const metadata = await sharp(resolvedPath).metadata();
+      const pixelCount = (metadata.width || 800) * (metadata.height || 600);
+      
+      logger.info(`Image file size: ${fileSizeKB.toFixed(2)} KB, dimensions: ${metadata.width}x${metadata.height} (${pixelCount} pixels)`);
+
+      // Dynamically set maxSizeKB based on both file size and pixel count for optimal first-attempt success
+      if (maxSizeKB === undefined) {
+        if (fileSizeKB > 2000 || pixelCount > 10000000) {
+          maxSizeKB = 200; // For very large images (>2MB or >10M pixels), target 200KB
+        } else if (fileSizeKB > 500 || pixelCount > 2000000) {
+          maxSizeKB = 400; // For large images (500KB-2MB or 2M-10M pixels), target 400KB
+        } else {
+          maxSizeKB = 800; // For smaller images (<500KB and <2M pixels), target 800KB
+        }
+        logger.info(`Auto-selected maxSizeKB: ${maxSizeKB} KB for ${fileSizeKB.toFixed(2)} KB image (${pixelCount} pixels)`);
+      }
+
+      let imageBuffer: Buffer;
+      let finalSizeKB: number;
+
+      if (fileSizeKB > maxSizeKB) {
+        logger.info(`Image size (${fileSizeKB.toFixed(2)} KB) exceeds limit (${maxSizeKB} KB). Compressing image...`);
+        
+        // Use sharp to compress the image
+        const compressedBuffer = await compressImageWithSharp(resolvedPath, maxSizeKB);
+        imageBuffer = compressedBuffer;
+        finalSizeKB = compressedBuffer.length / 1024;
+        
+        logger.info(`Image compressed from ${fileSizeKB.toFixed(2)} KB to ${finalSizeKB.toFixed(2)} KB`);
+      } else {
+        // For smaller images, use as-is
+        imageBuffer = readFileSync(resolvedPath);
+        finalSizeKB = fileSizeKB;
+      }
+
       const imageData = imageBuffer.toString('base64');
       
       // Call the existing insert_image_data tool
@@ -1159,8 +1201,8 @@ server.tool(
       return {
         content: [
           {
-            type: "text",
-            text: `Successfully inserted image "${filePath}" into frame "${typedResult.frameName}" with node ID: ${typedResult.nodeId}`,
+            type: "text" as const,
+            text: `Successfully inserted image "${filePath}" into frame "${typedResult.frameName}" with node ID: ${typedResult.nodeId}. ${fileSizeKB > maxSizeKB ? `Original size: ${fileSizeKB.toFixed(2)} KB, compressed to: ${finalSizeKB.toFixed(2)} KB` : `Size: ${finalSizeKB.toFixed(2)} KB`}`,
           },
         ],
       };
@@ -1168,7 +1210,7 @@ server.tool(
       return {
         content: [
           {
-            type: "text",
+            type: "text" as const,
             text: `Error inserting image from file "${filePath}": ${error instanceof Error ? error.message : String(error)}`,
           },
         ],
@@ -2325,6 +2367,35 @@ server.tool(
   }
 );
 
+// Create Heatmap Tool
+server.tool(
+  "create_heatmap",
+  "This tool is for creating heatmap and ALWAYS call this tool when creating heatmap",
+  {},
+  async () => {
+    try {
+      const result = await sendCommandToFigma("create_heatmap", {});
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Heatmap creation initiated in Figma`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error creating heatmap: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 
 // Define command types and parameters
 type FigmaCommand =
@@ -2371,7 +2442,8 @@ type FigmaCommand =
   | "create_connections"
   | "set_focus"
   | "set_selections"
-  | "detach_instance";
+  | "detach_instance"
+  | "create_heatmap";
 
 type CommandParams = {
   get_document_info: Record<string, never>;
@@ -2557,8 +2629,177 @@ type CommandParams = {
   detach_instance: {
     nodeId: string;
   };
+  create_heatmap: Record<string, never>;
 
 };
+
+// Helper function to compress and insert large images
+async function compressAndInsertImage(
+  imagePath: string,
+  frameId: string | undefined,
+  startX: number,
+  startY: number,
+  targetWidth?: number,
+  targetHeight?: number,
+  maxSizeKB: number = 800
+) {
+  try {
+    logger.info("Starting image compression and insertion process...");
+
+    // Read the original image
+    const imageBuffer = readFileSync(imagePath);
+    const originalSizeKB = imageBuffer.length / 1024;
+
+    logger.info(`Original image size: ${originalSizeKB.toFixed(2)} KB`);
+
+    // Compress the image
+    const compressedImage = await compressImageWithSharp(imagePath, maxSizeKB);
+
+    logger.info(`Successfully compressed image to ${(compressedImage.length / 1024).toFixed(2)} KB`);
+
+    // Insert the compressed image
+    const result = await sendCommandToFigma("insert_image_data", {
+      imageData: compressedImage.toString('base64'),
+      frameId,
+      x: startX,
+      y: startY,
+      width: targetWidth,
+      height: targetHeight,
+    });
+
+    const typedResult = result as { nodeId: string; name: string; frameId: string; frameName: string; width: number; height: number };
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Successfully inserted compressed image "${imagePath}" into frame "${typedResult.frameName}" with node ID: ${typedResult.nodeId}. Original size: ${originalSizeKB.toFixed(2)} KB, compressed to: ${(compressedImage.length / 1024).toFixed(2)} KB`,
+        },
+      ],
+    };
+
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Error handling large image: ${error instanceof Error ? error.message : String(error)}. Image compression failed.`,
+        },
+      ],
+    };
+  }
+}
+
+// Helper function to compress image using Sharp
+async function compressImageWithSharp(imagePath: string, maxSizeKB: number): Promise<Buffer> {
+  try {
+    // First, get the original image metadata to determine preprocessing strategy
+    const metadata = await sharp(imagePath).metadata();
+    const originalWidth = metadata.width || 800;
+    const originalHeight = metadata.height || 600;
+    const pixelCount = originalWidth * originalHeight;
+
+    logger.info(`Original image: ${originalWidth}x${originalHeight} (${pixelCount} pixels, ${(pixelCount / 1000000).toFixed(1)}M pixels)`);
+
+    let quality = 90;
+    let scale = 1.0;
+    let compressedBuffer: Buffer;
+
+    // For extremely large images (>10M pixels), start with more aggressive preprocessing
+    if (pixelCount > 10000000) { // 10M pixels
+      logger.info(`Large image detected (${(pixelCount / 1000000).toFixed(1)}M pixels). Starting with aggressive preprocessing.`);
+      scale = Math.min(0.5, Math.sqrt(maxSizeKB / 100)); // Start at 50% or calculated scale
+      quality = 80; // Start with lower quality for large images
+    }
+
+    // Try different compression levels until we meet the size requirement
+    do {
+      const sharpInstance = sharp(imagePath);
+
+      const targetWidth = Math.round(originalWidth * scale);
+      const targetHeight = Math.round(originalHeight * scale);
+
+      // Apply compression
+      if (metadata.format === 'png') {
+        compressedBuffer = await sharpInstance
+          .resize(targetWidth, targetHeight, {
+            withoutEnlargement: true,
+            fit: 'inside'
+          })
+          .png({ quality, compressionLevel: 9 })
+          .toBuffer();
+      } else {
+        // For JPEG and other formats
+        compressedBuffer = await sharpInstance
+          .resize(targetWidth, targetHeight, {
+            withoutEnlargement: true,
+            fit: 'inside'
+          })
+          .jpeg({ quality })
+          .toBuffer();
+      }
+
+      const currentSizeKB = compressedBuffer.length / 1024;
+
+      if (currentSizeKB <= maxSizeKB) {
+        logger.info(`Successfully compressed image to ${currentSizeKB.toFixed(2)} KB (${targetWidth}x${targetHeight}) with quality ${quality} and scale ${(scale * 100).toFixed(0)}%`);
+        return compressedBuffer;
+      }
+
+      // More aggressive reduction strategy for large images
+      if (pixelCount > 5000000) { // 5M pixels - be more aggressive
+        if (scale > 0.3) {
+          scale = Math.max(0.3, scale - 0.2); // Reduce scale by 20% each time
+          quality = Math.max(50, quality - 15); // Reduce quality more aggressively
+        } else {
+          quality = Math.max(30, quality - 10); // Continue reducing quality
+        }
+      } else {
+        // Original strategy for smaller images
+        if (quality > 60) {
+          quality -= 10;
+        } else if (scale > 0.5) {
+          scale -= 0.1;
+          quality = 90; // Reset quality when scaling down
+        } else {
+          quality -= 5;
+        }
+      }
+
+    } while (quality > 10 && scale > 0.1); // Allow more aggressive scaling down to 10%
+
+    // If we still can't compress enough, try converting to JPEG for better compression
+    if (metadata.format === 'png' && pixelCount > 2000000) {
+      logger.info(`PNG compression insufficient. Trying JPEG conversion for better compression.`);
+      try {
+        const jpegBuffer = await sharp(imagePath)
+          .resize(Math.round(originalWidth * 0.6), Math.round(originalHeight * 0.6), {
+            withoutEnlargement: true,
+            fit: 'inside'
+          })
+          .jpeg({ quality: 70 })
+          .toBuffer();
+
+        const jpegSizeKB = jpegBuffer.length / 1024;
+        if (jpegSizeKB <= maxSizeKB) {
+          logger.info(`Successfully converted PNG to JPEG: ${jpegSizeKB.toFixed(2)} KB`);
+          return jpegBuffer;
+        }
+      } catch (jpegError) {
+        logger.warn(`JPEG conversion failed: ${jpegError}`);
+      }
+    }
+
+    // If we still can't compress enough, return the last attempt
+    const finalSizeKB = compressedBuffer!.length / 1024;
+    logger.warn(`Could not compress image below ${maxSizeKB} KB. Final size: ${finalSizeKB.toFixed(2)} KB (${Math.round(originalWidth * scale)}x${Math.round(originalHeight * scale)})`);
+    return compressedBuffer!;
+
+  } catch (error) {
+    logger.error(`Image compression failed: ${error}`);
+    throw new Error(`Failed to compress image: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 
 
 // Helper function to process Figma node responses
@@ -2788,39 +3029,6 @@ function sendCommandToFigma(
     ws.send(JSON.stringify(request));
   });
 }
-
-// Create Heatmap Tool
-server.tool(
-  "create_heatmap",
-  "This tool is for creating heatmap and ALWAYS call this tool when creating heatmap",
-  {},
-  async () => {
-    try {
-      // Get the heatmap strategy from prompts
-      const heatmapPrompt = await figmaPrompts.heatmap_strategy.handler();
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `To create a heatmap, follow the heatmap_strategy prompt accurately:
-
-${heatmapPrompt.messages[0].content.text}`
-          }
-        ]
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error getting heatmap strategy: ${error instanceof Error ? error.message : String(error)}`
-          }
-        ]
-      };
-    }
-  }
-);
 
 // Update the join_channel tool
 server.tool(

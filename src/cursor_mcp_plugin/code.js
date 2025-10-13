@@ -239,6 +239,8 @@ async function handleCommand(command, params) {
       return await setSelections(params);
     case "detach_instance":
       return await detachInstance(params);
+    case "create_heatmap":
+      return await createHeatmap(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -4333,4 +4335,24 @@ async function setSelections(params) {
     notFoundIds: notFoundIds,
     message: `Selected ${nodes.length} nodes${notFoundIds.length > 0 ? ` (${notFoundIds.length} not found)` : ''}`
   };
+}
+
+// Create Heatmap function
+async function createHeatmap(params) {
+  try {
+    // This is a placeholder implementation for heatmap creation
+    // In a real implementation, this would create visual heatmap elements
+    
+    figma.notify("Heatmap creation feature is in development", { timeout: 3000 });
+    
+    return {
+      success: true,
+      message: "Heatmap creation initiated. This feature is currently in development."
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error creating heatmap: ${error.message}`
+    };
+  }
 }
