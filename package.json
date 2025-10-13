@@ -30,6 +30,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.13.1",
     "bun": "^1.2.22",
+    "puppeteer": "^24.24.0",
     "sharp": "^0.34.4",
     "uuid": "latest",
     "ws": "latest",
