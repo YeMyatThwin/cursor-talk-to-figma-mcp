@@ -10,6 +10,7 @@ import figmaPrompts from "./prompts.js";
 import { readFileSync, existsSync, statSync } from "fs";
 import { resolve } from "path";
 import sharp from "sharp";
+import puppeteer from "puppeteer";
 
 // Define TypeScript interfaces for Figma responses
 interface FigmaResponse {
@@ -1162,7 +1163,7 @@ server.tool(
         } else if (fileSizeKB > 500 || pixelCount > 2000000) {
           maxSizeKB = 400; // For large images (500KB-2MB or 2M-10M pixels), target 400KB
         } else {
-          maxSizeKB = 800; // For smaller images (<500KB and <2M pixels), target 800KB
+          maxSizeKB = 400; // For smaller images (<500KB and <2M pixels), target 800KB
         }
         logger.info(`Auto-selected maxSizeKB: ${maxSizeKB} KB for ${fileSizeKB.toFixed(2)} KB image (${pixelCount} pixels)`);
       }
@@ -1212,6 +1213,130 @@ server.tool(
           {
             type: "text" as const,
             text: `Error inserting image from file "${filePath}": ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
+// Insert Website Screenshot Tool
+server.tool(
+  "insert_website_screenshot",
+  "Take a screenshot of a website and insert it into a Figma frame. Supports specifying a frameId explicitly, positioning with x/y coordinates, or using the currently selected frame. Automatically handles URL parsing, screenshot capture with Puppeteer, and image insertion with compression.",
+  {
+    website: z.string().describe("The website name or URL to screenshot (e.g., 'facebook', 'https://facebook.com', 'google.com')"),
+    frameId: z.string().optional().describe("ID of the frame to insert the image into. If not provided, uses the currently selected frame"),
+    x: z.number().optional().describe("X position within the frame (default: 0)"),
+    y: z.number().optional().describe("Y position within the frame (default: 0)"),
+    width: z.number().optional().describe("Width of the image (default: image natural width)"),
+    height: z.number().optional().describe("Height of the image (default: image natural height)"),
+    maxSizeKB: z.number().optional().describe("Maximum size in KB for compression (auto-selected based on image size if not specified)"),
+  },
+  async ({ website, frameId, x = 0, y = 0, width, height, maxSizeKB }: any) => {
+    try {
+      // Parse website URL - add https:// if not present
+      let url = website;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = `https://${url}`;
+      }
+
+      // Generate filename based on website name
+      const websiteName = website.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-');
+      const filename = `screenshots/${websiteName}-screenshot.png`;
+      const filepath = resolve(process.cwd(), filename);
+
+      logger.info(`Taking screenshot of ${url} and saving to ${filename}`);
+
+      // Take screenshot using puppeteer
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1920, height: 1080 });
+
+      await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+
+      await page.screenshot({
+        path: filepath as `${string}.png`,
+        fullPage: true,
+        type: 'png'
+      });
+
+      await browser.close();
+
+      logger.info(`Screenshot saved to ${filename}, now inserting into Figma`);
+
+      // Now insert the image using the existing insert_image_from_file logic
+      if (!existsSync(filepath)) {
+        throw new Error(`Screenshot file not found: ${filepath}`);
+      }
+
+      // Check file size and get image metadata
+      const stats = statSync(filepath);
+      const fileSizeKB = stats.size / 1024;
+
+      const metadata = await sharp(filepath).metadata();
+      const pixelCount = (metadata.width || 800) * (metadata.height || 600);
+
+      logger.info(`Screenshot file size: ${fileSizeKB.toFixed(2)} KB, dimensions: ${metadata.width}x${metadata.height}`);
+
+      // Set maxSizeKB if not provided
+      if (maxSizeKB === undefined) {
+        if (fileSizeKB > 2000 || pixelCount > 10000000) {
+          maxSizeKB = 200;
+        } else if (fileSizeKB > 500 || pixelCount > 2000000) {
+          maxSizeKB = 400;
+        } else {
+          maxSizeKB = 400;
+        }
+        logger.info(`Auto-selected maxSizeKB: ${maxSizeKB} KB for screenshot`);
+      }
+
+      let imageBuffer: Buffer;
+      let finalSizeKB: number;
+
+      if (fileSizeKB > maxSizeKB) {
+        logger.info(`Screenshot size (${fileSizeKB.toFixed(2)} KB) exceeds limit (${maxSizeKB} KB). Compressing...`);
+        const compressedBuffer = await compressImageWithSharp(filepath, maxSizeKB);
+        imageBuffer = compressedBuffer;
+        finalSizeKB = compressedBuffer.length / 1024;
+        logger.info(`Screenshot compressed from ${fileSizeKB.toFixed(2)} KB to ${finalSizeKB.toFixed(2)} KB`);
+      } else {
+        imageBuffer = readFileSync(filepath);
+        finalSizeKB = fileSizeKB;
+      }
+
+      const imageData = imageBuffer.toString('base64');
+
+      // Insert into Figma
+      const result = await sendCommandToFigma("insert_image_data", {
+        imageData,
+        frameId,
+        x,
+        y,
+        width,
+        height,
+      });
+
+      const typedResult = result as { nodeId: string; name: string; frameId: string; frameName: string; width: number; height: number };
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Successfully captured screenshot of ${url} and inserted into frame "${typedResult.frameName}" with node ID: ${typedResult.nodeId}. ${fileSizeKB > maxSizeKB ? `Original size: ${fileSizeKB.toFixed(2)} KB, compressed to: ${finalSizeKB.toFixed(2)} KB` : `Size: ${finalSizeKB.toFixed(2)} KB`}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error taking screenshot and inserting image: ${error instanceof Error ? error.message : String(error)}`,
           },
         ],
       };
@@ -2422,6 +2547,7 @@ type FigmaCommand =
   | "export_node_as_image"
   | "insert_image_data"
   | "insert_image_from_file"
+  | "insert_website_screenshot"
   | "join"
   | "set_corner_radius"
   | "clone_node"
@@ -2561,6 +2687,15 @@ type CommandParams = {
     y?: number;
     width?: number;
     height?: number;
+  };
+  insert_website_screenshot: {
+    website: string;
+    frameId?: string;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    maxSizeKB?: number;
   };
   execute_code: {
     code: string;
