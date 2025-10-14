@@ -4361,14 +4361,40 @@ async function createHeatmap(params) {
 
 async function createTable(params) {
   try {
-    const { rows, columns, textData, x = 0, y = 0, cellWidth = 80, cellHeight = 40, name = "Table" } = params;
+    const { rows, columns, textData, x = 0, y = 0, cellHeight = 40, name = "Table" } = params;
+    let cellWidth = params.cellWidth || 80;
+
+    // Check if there's a selected frame to place the table in
+    const selection = figma.currentPage.selection;
+    const selectedFrame = selection.find(node => node.type === 'FRAME');
+
+    let parentFrame = figma.currentPage;
+    let tableX = x;
+    let tableY = y;
+    let tableWidth;
+
+    if (selectedFrame) {
+      // Use the selected frame as parent
+      parentFrame = selectedFrame;
+      tableX = 0;
+      tableY = 0;
+      // Set table width to 90% of parent frame width
+      tableWidth = selectedFrame.width * 0.9;
+      // Calculate equal column width
+      cellWidth = tableWidth / columns;
+    } else {
+      // No selected frame, use default table width
+      tableWidth = cellWidth * columns;
+    }
 
     // Create a frame to hold the table
     const tableFrame = figma.createFrame();
     tableFrame.name = name;
-    tableFrame.x = x;
-    tableFrame.y = y;
+    tableFrame.x = tableX;
+    tableFrame.y = tableY;
     tableFrame.layoutMode = "VERTICAL";
+    tableFrame.layoutSizingHorizontal = "HUG";
+    tableFrame.layoutSizingVertical = "HUG";
     tableFrame.itemSpacing = 0;
     tableFrame.paddingTop = 0;
     tableFrame.paddingBottom = 0;
@@ -4390,6 +4416,9 @@ async function createTable(params) {
       rowFrame.paddingRight = 0;
       rowFrame.fills = [];
       rowFrame.strokes = [];
+      // Set row to hug height for long text
+      rowFrame.layoutSizingHorizontal = "HUG";
+      rowFrame.layoutSizingVertical = "HUG";
 
       // Create cells in each row
       for (let col = 0; col < columns; col++) {
@@ -4410,21 +4439,33 @@ async function createTable(params) {
         // Set the text content from the provided data
         textNode.characters = textData[row][col] || "";
         textNode.fontSize = 14;
-        textNode.textAlignHorizontal = "CENTER";
+        textNode.textAlignHorizontal = "LEFT";
         textNode.textAlignVertical = "CENTER";
         
-        // Resize text node to fill the cell for proper alignment
-        textNode.resize(cellWidth, cellHeight);
-
+        // Make text node narrower and center it horizontally in the cell
+        const textNodeWidth = Math.min(cellWidth * 0.8, 200); // 80% of cell width or max 200px
+        textNode.resize(textNodeWidth, cellHeight);
+        textNode.x = (cellWidth - textNodeWidth) / 2; // Center horizontally
+        
         // Add to cell
         cellFrame.appendChild(textNode);
+        
+        // Adjust cell height if text is too long
+        if (textNode.height > cellHeight) {
+          cellFrame.resize(cellWidth, textNode.height + 16); // Add padding
+        }
 
         // Add cell to row
         rowFrame.appendChild(cellFrame);
-      }
-
-      // Add row to table
+      }      // Add row to table
       tableFrame.appendChild(rowFrame);
+    }
+
+    // Add table to parent (either selected frame or current page)
+    if (selectedFrame) {
+      selectedFrame.appendChild(tableFrame);
+    } else {
+      figma.currentPage.appendChild(tableFrame);
     }
 
     // Select the table to show it to the user
@@ -4432,7 +4473,7 @@ async function createTable(params) {
 
     return {
       success: true,
-      message: `Table created successfully with ${rows} rows and ${columns} columns`,
+      message: `Table created successfully with ${rows} rows and ${columns} columns${selectedFrame ? ' inside selected frame' : ''}`,
       tableId: tableFrame.id,
       tableName: tableFrame.name
     };
