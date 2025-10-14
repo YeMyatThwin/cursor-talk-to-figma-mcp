@@ -239,6 +239,10 @@ async function handleCommand(command, params) {
       return await setSelections(params);
     case "detach_instance":
       return await detachInstance(params);
+    case "create_heatmap":
+      return await createHeatmap(params);
+    case "create_table":
+      return await createTable(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -4333,4 +4337,109 @@ async function setSelections(params) {
     notFoundIds: notFoundIds,
     message: `Selected ${nodes.length} nodes${notFoundIds.length > 0 ? ` (${notFoundIds.length} not found)` : ''}`
   };
+}
+
+// Create Heatmap function
+async function createHeatmap(params) {
+  try {
+    // This is a placeholder implementation for heatmap creation
+    // In a real implementation, this would create visual heatmap elements
+    
+    figma.notify("Heatmap creation feature is in development", { timeout: 3000 });
+    
+    return {
+      success: true,
+      message: "Heatmap creation initiated. This feature is currently in development."
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error creating heatmap: ${error.message}`
+    };
+  }
+}
+
+async function createTable(params) {
+  try {
+    const { rows, columns, textData, x = 0, y = 0, cellWidth = 80, cellHeight = 40, name = "Table" } = params;
+
+    // Create a frame to hold the table
+    const tableFrame = figma.createFrame();
+    tableFrame.name = name;
+    tableFrame.x = x;
+    tableFrame.y = y;
+    tableFrame.layoutMode = "VERTICAL";
+    tableFrame.itemSpacing = 0;
+    tableFrame.paddingTop = 0;
+    tableFrame.paddingBottom = 0;
+    tableFrame.paddingLeft = 0;
+    tableFrame.paddingRight = 0;
+    tableFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+    tableFrame.strokes = [{ type: "SOLID", color: { r: 0.8, g: 0.8, b: 0.8 } }];
+    tableFrame.strokeWeight = 1;
+
+    // Create rows
+    for (let row = 0; row < rows; row++) {
+      const rowFrame = figma.createFrame();
+      rowFrame.name = `Row ${row + 1}`;
+      rowFrame.layoutMode = "HORIZONTAL";
+      rowFrame.itemSpacing = 0;
+      rowFrame.paddingTop = 0;
+      rowFrame.paddingBottom = 0;
+      rowFrame.paddingLeft = 0;
+      rowFrame.paddingRight = 0;
+      rowFrame.fills = [];
+      rowFrame.strokes = [];
+
+      // Create cells in each row
+      for (let col = 0; col < columns; col++) {
+        const cellFrame = figma.createFrame();
+        cellFrame.name = `Cell ${row + 1}-${col + 1}`;
+        cellFrame.layoutMode = "NONE";
+        cellFrame.resize(cellWidth, cellHeight);
+        cellFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+        cellFrame.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
+        cellFrame.strokeWeight = 1;
+
+        // Create text node for the cell
+        const textNode = figma.createText();
+        
+        // Load font before setting properties
+        await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+        
+        // Set the text content from the provided data
+        textNode.characters = textData[row][col] || "";
+        textNode.fontSize = 14;
+        textNode.textAlignHorizontal = "CENTER";
+        textNode.textAlignVertical = "CENTER";
+        
+        // Resize text node to fill the cell for proper alignment
+        textNode.resize(cellWidth, cellHeight);
+
+        // Add to cell
+        cellFrame.appendChild(textNode);
+
+        // Add cell to row
+        rowFrame.appendChild(cellFrame);
+      }
+
+      // Add row to table
+      tableFrame.appendChild(rowFrame);
+    }
+
+    // Select the table to show it to the user
+    figma.currentPage.selection = [tableFrame];
+
+    return {
+      success: true,
+      message: `Table created successfully with ${rows} rows and ${columns} columns`,
+      tableId: tableFrame.id,
+      tableName: tableFrame.name
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error creating table: ${error.message}`
+    };
+  }
 }
