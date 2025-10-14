@@ -4420,7 +4420,10 @@ async function createTable(params) {
       rowFrame.layoutSizingHorizontal = "HUG";
       rowFrame.layoutSizingVertical = "HUG";
 
-      // Create cells in each row
+      const cellsInRow = [];
+      let maxRowHeight = cellHeight;
+
+      // First pass: create cells and calculate heights
       for (let col = 0; col < columns; col++) {
         const cellFrame = figma.createFrame();
         cellFrame.name = `Cell ${row + 1}-${col + 1}`;
@@ -4440,24 +4443,37 @@ async function createTable(params) {
         textNode.characters = textData[row][col] || "";
         textNode.fontSize = 14;
         textNode.textAlignHorizontal = "LEFT";
-        textNode.textAlignVertical = "CENTER";
+        textNode.textAlignVertical = "TOP";
         
-        // Make text node narrower and center it horizontally in the cell
-        const textNodeWidth = Math.min(cellWidth * 0.8, 200); // 80% of cell width or max 200px
-        textNode.resize(textNodeWidth, cellHeight);
-        textNode.x = (cellWidth - textNodeWidth) / 2; // Center horizontally
+        // Set text node width to 80% of cell width (no max restriction)
+        const textNodeWidth = cellWidth * 0.8;
+        textNode.resize(textNodeWidth, textNode.height); // Let text determine height
         
-        // Add to cell
+        // Position text node horizontally centered in the cell
+        textNode.x = (cellWidth - textNodeWidth) / 2;
+        textNode.y = 8; // Add some top padding
+        
+        // Add text node to cell first
         cellFrame.appendChild(textNode);
         
-        // Adjust cell height if text is too long
-        if (textNode.height > cellHeight) {
-          cellFrame.resize(cellWidth, textNode.height + 16); // Add padding
-        }
+        // Calculate cell height based on actual text height plus padding
+        const calculatedCellHeight = Math.max(cellHeight, textNode.height + 16);
+        
+        // Track the maximum height for this row
+        maxRowHeight = Math.max(maxRowHeight, calculatedCellHeight);
 
+        // Store cell and its text node for second pass
+        cellsInRow.push({ cellFrame, textNode, calculatedCellHeight });
+      }
+
+      // Second pass: resize all cells in the row to match the maximum height
+      for (const { cellFrame, textNode } of cellsInRow) {
+        cellFrame.resize(cellWidth, maxRowHeight);
         // Add cell to row
         rowFrame.appendChild(cellFrame);
-      }      // Add row to table
+      }
+
+      // Add row to table
       tableFrame.appendChild(rowFrame);
     }
 
