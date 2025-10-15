@@ -461,9 +461,10 @@ server.tool(
     y: z.number().optional().describe("Y position for the table (default: 0)"),
     cellWidth: z.number().min(20).max(500).optional().describe("Width of each cell in pixels (default: 80)"),
     cellHeight: z.number().min(20).max(500).optional().describe("Height of each cell in pixels (default: 40)"),
-    name: z.string().optional().describe("Name for the table frame")
+    name: z.string().optional().describe("Name for the table frame"),
+    fontSize: z.number().min(8).optional().describe("Font size for table text (default: 14)")
   },
-  async ({ rows, columns, textData, x = 0, y = 0, cellWidth = 80, cellHeight = 40, name = "Table" }: any) => {
+  async ({ rows, columns, textData, x = 0, y = 0, cellWidth = 80, cellHeight = 40, name = "Table", fontSize = 14 }: any) => {
     try {
       // Validate textData dimensions
       if (!Array.isArray(textData) || textData.length !== rows) {
@@ -484,7 +485,8 @@ server.tool(
         y,
         cellWidth,
         cellHeight,
-        name
+        name,
+        fontSize
       });
       return {
         content: [
@@ -2858,6 +2860,7 @@ type CommandParams = {
     cellWidth?: number;
     cellHeight?: number;
     name?: string;
+    fontSize?: number;
   };
 
 };

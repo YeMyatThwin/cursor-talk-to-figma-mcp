@@ -4361,7 +4361,7 @@ async function createHeatmap(params) {
 
 async function createTable(params) {
   try {
-    const { rows, columns, textData, x = 0, y = 0, cellHeight = 40, name = "Table" } = params;
+    const { rows, columns, textData, x = 0, y = 0, cellHeight = 40, name = "Table", fontSize = 14 } = params;
     let cellWidth = params.cellWidth || 80;
 
     // Check if there's a selected frame to place the table in
@@ -4441,7 +4441,7 @@ async function createTable(params) {
         
         // Set the text content from the provided data
         textNode.characters = textData[row][col] || "";
-        textNode.fontSize = 14;
+        textNode.fontSize = fontSize;
         textNode.textAlignHorizontal = "LEFT";
         textNode.textAlignVertical = "TOP";
         
