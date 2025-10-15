@@ -239,6 +239,10 @@ async function handleCommand(command, params) {
       return await setSelections(params);
     case "detach_instance":
       return await detachInstance(params);
+    case "create_heatmap":
+      return await createHeatmap(params);
+    case "create_table":
+      return await createTable(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -4333,4 +4337,166 @@ async function setSelections(params) {
     notFoundIds: notFoundIds,
     message: `Selected ${nodes.length} nodes${notFoundIds.length > 0 ? ` (${notFoundIds.length} not found)` : ''}`
   };
+}
+
+// Create Heatmap function
+async function createHeatmap(params) {
+  try {
+    // This is a placeholder implementation for heatmap creation
+    // In a real implementation, this would create visual heatmap elements
+    
+    figma.notify("Heatmap creation feature is in development", { timeout: 3000 });
+    
+    return {
+      success: true,
+      message: "Heatmap creation initiated. This feature is currently in development."
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error creating heatmap: ${error.message}`
+    };
+  }
+}
+
+async function createTable(params) {
+  try {
+    const { rows, columns, textData, x = 0, y = 0, cellHeight = 40, name = "Table", fontSize = 14 } = params;
+    let cellWidth = params.cellWidth || 80;
+
+    // Check if there's a selected frame to place the table in
+    const selection = figma.currentPage.selection;
+    const selectedFrame = selection.find(node => node.type === 'FRAME');
+
+    let parentFrame = figma.currentPage;
+    let tableX = x;
+    let tableY = y;
+    let tableWidth;
+
+    if (selectedFrame) {
+      // Use the selected frame as parent
+      parentFrame = selectedFrame;
+      tableX = 0;
+      tableY = 0;
+      // Set table width to 90% of parent frame width
+      tableWidth = selectedFrame.width * 0.9;
+      // Calculate equal column width
+      cellWidth = tableWidth / columns;
+    } else {
+      // No selected frame, use default table width
+      tableWidth = cellWidth * columns;
+    }
+
+    // Create a frame to hold the table
+    const tableFrame = figma.createFrame();
+    tableFrame.name = name;
+    tableFrame.x = tableX;
+    tableFrame.y = tableY;
+    tableFrame.layoutMode = "VERTICAL";
+    tableFrame.layoutSizingHorizontal = "HUG";
+    tableFrame.layoutSizingVertical = "HUG";
+    tableFrame.itemSpacing = 0;
+    tableFrame.paddingTop = 0;
+    tableFrame.paddingBottom = 0;
+    tableFrame.paddingLeft = 0;
+    tableFrame.paddingRight = 0;
+    tableFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+    tableFrame.strokes = [{ type: "SOLID", color: { r: 0.8, g: 0.8, b: 0.8 } }];
+    tableFrame.strokeWeight = 1;
+
+    // Create rows
+    for (let row = 0; row < rows; row++) {
+      const rowFrame = figma.createFrame();
+      rowFrame.name = `Row ${row + 1}`;
+      rowFrame.layoutMode = "HORIZONTAL";
+      rowFrame.itemSpacing = 0;
+      rowFrame.paddingTop = 0;
+      rowFrame.paddingBottom = 0;
+      rowFrame.paddingLeft = 0;
+      rowFrame.paddingRight = 0;
+      rowFrame.fills = [];
+      rowFrame.strokes = [];
+      // Set row to hug height for long text
+      rowFrame.layoutSizingHorizontal = "HUG";
+      rowFrame.layoutSizingVertical = "HUG";
+
+      const cellsInRow = [];
+      let maxRowHeight = cellHeight;
+
+      // First pass: create cells and calculate heights
+      for (let col = 0; col < columns; col++) {
+        const cellFrame = figma.createFrame();
+        cellFrame.name = `Cell ${row + 1}-${col + 1}`;
+        cellFrame.layoutMode = "NONE";
+        cellFrame.resize(cellWidth, cellHeight);
+        cellFrame.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+        cellFrame.strokes = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
+        cellFrame.strokeWeight = 1;
+
+        // Create text node for the cell
+        const textNode = figma.createText();
+        
+        // Load font before setting properties
+        await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+        
+        // Set the text content from the provided data
+        textNode.characters = textData[row][col] || "";
+        textNode.fontSize = fontSize;
+        textNode.textAlignHorizontal = "LEFT";
+        textNode.textAlignVertical = "TOP";
+        
+        // Set text node width to 80% of cell width (no max restriction)
+        const textNodeWidth = cellWidth * 0.8;
+        textNode.resize(textNodeWidth, textNode.height); // Let text determine height
+        
+        // Position text node horizontally centered in the cell
+        textNode.x = (cellWidth - textNodeWidth) / 2;
+        textNode.y = 8; // Add some top padding
+        
+        // Add text node to cell first
+        cellFrame.appendChild(textNode);
+        
+        // Calculate cell height based on actual text height plus padding
+        const calculatedCellHeight = Math.max(cellHeight, textNode.height + 16);
+        
+        // Track the maximum height for this row
+        maxRowHeight = Math.max(maxRowHeight, calculatedCellHeight);
+
+        // Store cell and its text node for second pass
+        cellsInRow.push({ cellFrame, textNode, calculatedCellHeight });
+      }
+
+      // Second pass: resize all cells in the row to match the maximum height
+      for (const { cellFrame, textNode } of cellsInRow) {
+        cellFrame.resize(cellWidth, maxRowHeight);
+        // Add cell to row
+        rowFrame.appendChild(cellFrame);
+      }
+
+      // Add row to table
+      tableFrame.appendChild(rowFrame);
+    }
+
+    // Add table to parent (either selected frame or current page)
+    if (selectedFrame) {
+      selectedFrame.appendChild(tableFrame);
+    } else {
+      figma.currentPage.appendChild(tableFrame);
+    }
+
+    // Select the table to show it to the user
+    figma.currentPage.selection = [tableFrame];
+
+    return {
+      success: true,
+      message: `Table created successfully with ${rows} rows and ${columns} columns${selectedFrame ? ' inside selected frame' : ''}`,
+      tableId: tableFrame.id,
+      tableName: tableFrame.name
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error creating table: ${error.message}`
+    };
+  }
 }
