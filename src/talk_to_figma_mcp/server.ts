@@ -802,6 +802,87 @@ server.tool(
   }
 );
 
+// Create Vector Tool
+server.tool(
+  "create_vector",
+  "Create a new vector shape in Figma using SVG path data",
+  {
+    x: z.number().describe("X position"),
+    y: z.number().describe("Y position"),
+    vectorPaths: z.array(z.object({
+      windingRule: z.enum(["EVENODD", "NONZERO"]).optional().describe("Winding rule for the path (default: EVENODD)"),
+      data: z.string().describe("SVG path data string (e.g., 'M 0 100 L 100 100 L 50 0 Z' for a triangle)")
+    })).describe("Array of vector path objects defining the shape"),
+    name: z.string().optional().describe("Optional name for the vector"),
+    parentId: z
+      .string()
+      .optional()
+      .describe("Optional parent node ID to append the vector to"),
+    fillColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z.number().min(0).max(1).optional().describe("Alpha component (opacity, 0-1)"),
+      })
+      .optional()
+      .describe("Fill color in RGBA format"),
+    strokeColor: z
+      .object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z.number().min(0).max(1).optional().describe("Alpha component (opacity, 0-1)"),
+      })
+      .optional()
+      .describe("Stroke color in RGBA format"),
+    strokeWeight: z
+      .number()
+      .positive()
+      .optional()
+      .describe("Stroke weight"),
+  },
+  async ({ x, y, vectorPaths, name, parentId, fillColor, strokeColor, strokeWeight }: any) => {
+    try {
+      // Ensure each path has a default windingRule if not provided
+      const processedPaths = vectorPaths.map((path: any) => ({
+        windingRule: path.windingRule || "EVENODD",
+        data: path.data
+      }));
+
+      const result = await sendCommandToFigma("create_vector", {
+        x,
+        y,
+        vectorPaths: processedPaths,
+        fillColor: fillColor || { r: 0.2, g: 0.4, b: 1, a: 1 }, // Default to blue
+        strokeColor: strokeColor,
+        strokeWeight: strokeWeight,
+        name: name || "Vector",
+        parentId,
+      });
+      const typedResult = result as { name: string; id: string };
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Created vector "${typedResult.name}" with ID: ${typedResult.id}`,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error creating vector: ${error instanceof Error ? error.message : String(error)
+              }`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Set Fill Color Tool
 server.tool(
   "set_fill_color",
@@ -2615,6 +2696,7 @@ type FigmaCommand =
   | "read_my_design"
   | "create_rectangle"
   | "create_ellipse"
+  | "create_vector"
   | "create_frame"
   | "create_text"
   | "set_fill_color"
@@ -2679,6 +2761,19 @@ type CommandParams = {
     width?: number;
     height?: number;
     radius?: number;
+    name?: string;
+    parentId?: string;
+    fillColor?: { r: number; g: number; b: number; a?: number };
+    strokeColor?: { r: number; g: number; b: number; a?: number };
+    strokeWeight?: number;
+  };
+  create_vector: {
+    x: number;
+    y: number;
+    vectorPaths: Array<{
+      windingRule?: "EVENODD" | "NONZERO";
+      data: string;
+    }>;
     name?: string;
     parentId?: string;
     fillColor?: { r: number; g: number; b: number; a?: number };

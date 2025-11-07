@@ -125,6 +125,8 @@ async function handleCommand(command, params) {
       return await createRectangle(params);
     case "create_ellipse":
       return await createEllipse(params);
+    case "create_vector":
+      return await createVector(params);
     case "create_frame":
       return await createFrame(params);
     case "create_text":
@@ -758,6 +760,89 @@ async function createRectangle(params) {
     strokes: rect.strokes,
     strokeWeight: rect.strokeWeight,
     parentId: rect.parent ? rect.parent.id : undefined,
+  };
+}
+
+async function createVector(params) {
+  const {
+    x = 0,
+    y = 0,
+    vectorPaths = [],
+    name = "Vector",
+    parentId,
+    fillColor,
+    strokeColor,
+    strokeWeight,
+  } = params || {};
+
+  const vector = figma.createVector();
+  vector.x = x;
+  vector.y = y;
+  vector.name = name;
+
+  // Set vector paths
+  if (vectorPaths && vectorPaths.length > 0) {
+    vector.vectorPaths = vectorPaths;
+  }
+
+  // Set fill color if provided
+  if (fillColor) {
+    const paintStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(fillColor.r) || 0,
+        g: parseFloat(fillColor.g) || 0,
+        b: parseFloat(fillColor.b) || 0,
+      },
+      opacity: parseFloat(fillColor.a) || 1,
+    };
+    vector.fills = [paintStyle];
+  }
+
+  // Set stroke color and weight if provided
+  if (strokeColor) {
+    const strokeStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(strokeColor.r) || 0,
+        g: parseFloat(strokeColor.g) || 0,
+        b: parseFloat(strokeColor.b) || 0,
+      },
+      opacity: parseFloat(strokeColor.a) || 1,
+    };
+    vector.strokes = [strokeStyle];
+    
+    if (strokeWeight !== undefined) {
+      vector.strokeWeight = parseFloat(strokeWeight) || 1;
+    }
+  }
+
+  // If parentId is provided, append to that node, otherwise append to current page
+  if (parentId) {
+    const parentNode = await figma.getNodeByIdAsync(parentId);
+    if (!parentNode) {
+      throw new Error(`Parent node not found with ID: ${parentId}`);
+    }
+    if (!("appendChild" in parentNode)) {
+      throw new Error(`Parent node does not support children: ${parentId}`);
+    }
+    parentNode.appendChild(vector);
+  } else {
+    figma.currentPage.appendChild(vector);
+  }
+
+  return {
+    id: vector.id,
+    name: vector.name,
+    x: vector.x,
+    y: vector.y,
+    width: vector.width,
+    height: vector.height,
+    vectorPaths: vector.vectorPaths,
+    fills: vector.fills,
+    strokes: vector.strokes,
+    strokeWeight: vector.strokeWeight,
+    parentId: vector.parent ? vector.parent.id : undefined,
   };
 }
 
