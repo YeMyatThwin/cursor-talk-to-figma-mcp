@@ -28,8 +28,10 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@modelcontextprotocol/sdk": "1.13.1",
     "bun": "^1.2.22",
+    "dotenv": "^16.4.5",
     "uuid": "latest",
     "ws": "latest",
     "zod": "3.22.4"

@@ -7,10 +7,15 @@ import WebSocket from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { registerPrompts } from "./prompts.js";
 import figmaPrompts from "./prompts.js";
-import { readFileSync, existsSync, statSync } from "fs";
+import { readFileSync, existsSync, statSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import sharp from "sharp";
 import puppeteer from "puppeteer";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { config } from "dotenv";
+
+// Load environment variables from .env file
+config();
 
 // Define TypeScript interfaces for Figma responses
 interface FigmaResponse {
@@ -90,6 +95,9 @@ const args = process.argv.slice(2);
 const serverArg = args.find(arg => arg.startsWith('--server='));
 const serverUrl = serverArg ? serverArg.split('=')[1] : 'localhost';
 const WS_URL = serverUrl === 'localhost' ? `ws://${serverUrl}` : `wss://${serverUrl}`;
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "YOUR_API_KEY_HERE");
+const model = genAI.getGenerativeModel({ model: "gemini-3-pro-image-preview" });
 
 // Document Info Tool
 server.tool(
@@ -3395,6 +3403,48 @@ function sendCommandToFigma(
     ws.send(JSON.stringify(request));
   });
 }
+
+// Generate Image Tool
+server.tool(
+  "generate_image",
+  "Generate an image using Gemini AI from a text prompt",
+  {
+    prompt: z.string().describe("Text prompt for image generation"),
+  },
+  async ({ prompt }: any) => {
+    try {
+      const result = await model.generateContent([{ text: prompt }]);
+      const response = result.response;
+      const parts = response.candidates[0].content.parts;
+      const imagePart = parts.find((part: any) => part.inlineData);
+      if (imagePart && imagePart.inlineData) {
+        const base64Data = imagePart.inlineData.data;
+        const buffer = Buffer.from(base64Data, 'base64');
+        writeFileSync('generated_image.png', buffer);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Image generated successfully and saved as generated_image.png`,
+            },
+          ],
+        };
+      } else {
+        throw new Error('No image data in response');
+      }
+    } catch (error) {
+      logger.error(`Error generating image: ${error.message}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error generating image: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  }
+);
 
 // Update the join_channel tool
 server.tool(
