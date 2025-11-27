@@ -886,36 +886,75 @@ server.tool(
 // Set Fill Color Tool
 server.tool(
   "set_fill_color",
-  "Set the fill color of a node in Figma can be TextNode or FrameNode",
+  "Set the fill color or gradient of a node in Figma. Can be TextNode or FrameNode. Supports both solid colors and gradients.",
   {
     nodeId: z.string().describe("The ID of the node to modify"),
-    r: z.number().min(0).max(1).describe("Red component (0-1)"),
-    g: z.number().min(0).max(1).describe("Green component (0-1)"),
-    b: z.number().min(0).max(1).describe("Blue component (0-1)"),
-    a: z.number().min(0).max(1).optional().describe("Alpha component (0-1)"),
+    // Solid color parameters
+    r: z.number().min(0).max(1).optional().describe("Red component (0-1) for solid colors"),
+    g: z.number().min(0).max(1).optional().describe("Green component (0-1) for solid colors"),
+    b: z.number().min(0).max(1).optional().describe("Blue component (0-1) for solid colors"),
+    a: z.number().min(0).max(1).optional().describe("Alpha component (0-1) for solid colors"),
+    // Gradient parameters
+    gradientType: z.enum(["GRADIENT_LINEAR", "GRADIENT_RADIAL", "GRADIENT_ANGULAR", "GRADIENT_DIAMOND"]).optional().describe("Type of gradient"),
+    gradientStops: z.array(z.object({
+      position: z.number().min(0).max(1).describe("Position of the gradient stop (0-1)"),
+      color: z.object({
+        r: z.number().min(0).max(1).describe("Red component (0-1)"),
+        g: z.number().min(0).max(1).describe("Green component (0-1)"),
+        b: z.number().min(0).max(1).describe("Blue component (0-1)"),
+        a: z.number().min(0).max(1).optional().describe("Alpha component (0-1)"),
+      }).describe("Color of the gradient stop")
+    })).optional().describe("Array of gradient stops with position and color"),
+    gradientTransform: z.array(z.array(z.number())).optional().describe("Optional 2x3 transformation matrix for gradient positioning"),
   },
-  async ({ nodeId, r, g, b, a }: any) => {
+  async ({ nodeId, r, g, b, a, gradientType, gradientStops, gradientTransform }: any) => {
     try {
-      const result = await sendCommandToFigma("set_fill_color", {
-        nodeId,
-        color: { r, g, b, a: a || 1 },
-      });
-      const typedResult = result as { name: string };
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Set fill color of node "${typedResult.name
-              }" to RGBA(${r}, ${g}, ${b}, ${a || 1})`,
-          },
-        ],
-      };
+      let commandParams: any = { nodeId };
+
+      // Check if gradient parameters are provided
+      if (gradientStops && Array.isArray(gradientStops)) {
+        // Gradient fill
+        commandParams.gradientType = gradientType || 'GRADIENT_LINEAR';
+        commandParams.gradientStops = gradientStops;
+        if (gradientTransform) {
+          commandParams.gradientTransform = gradientTransform;
+        }
+
+        const result = await sendCommandToFigma("set_fill_color", commandParams);
+        const typedResult = result as { name: string };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Set gradient fill of node "${typedResult.name}" to ${gradientType || 'GRADIENT_LINEAR'} with ${gradientStops.length} stops`,
+            },
+          ],
+        };
+      } else {
+        // Solid color fill (existing behavior)
+        if (r === undefined || g === undefined || b === undefined) {
+          throw new Error("For solid colors, r, g, and b parameters are required");
+        }
+
+        commandParams.color = { r, g, b, a: a || 1 };
+
+        const result = await sendCommandToFigma("set_fill_color", commandParams);
+        const typedResult = result as { name: string };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Set fill color of node "${typedResult.name}" to RGBA(${r}, ${g}, ${b}, ${a || 1})`,
+            },
+          ],
+        };
+      }
     } catch (error) {
       return {
         content: [
           {
             type: "text",
-            text: `Error setting fill color: ${error instanceof Error ? error.message : String(error)
+            text: `Error setting fill: ${error instanceof Error ? error.message : String(error)
               }`,
           },
         ],

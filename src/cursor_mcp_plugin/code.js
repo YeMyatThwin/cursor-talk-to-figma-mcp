@@ -1152,10 +1152,7 @@ async function createText(params) {
 
 async function setFillColor(params) {
   console.log("setFillColor", params);
-  const {
-    nodeId,
-    color: { r, g, b, a },
-  } = params || {};
+  const { nodeId } = params || {};
 
   if (!nodeId) {
     throw new Error("Missing nodeId parameter");
@@ -1170,24 +1167,67 @@ async function setFillColor(params) {
     throw new Error(`Node does not support fills: ${nodeId}`);
   }
 
-  // Create RGBA color
-  const rgbColor = {
-    r: parseFloat(r) || 0,
-    g: parseFloat(g) || 0,
-    b: parseFloat(b) || 0,
-    a: parseFloat(a) || 1,
-  };
+  let paintStyle;
 
-  // Set fill
-  const paintStyle = {
-    type: "SOLID",
-    color: {
-      r: parseFloat(rgbColor.r),
-      g: parseFloat(rgbColor.g),
-      b: parseFloat(rgbColor.b),
-    },
-    opacity: parseFloat(rgbColor.a),
-  };
+  // Check if this is a gradient fill
+  if (params.gradientStops && Array.isArray(params.gradientStops)) {
+    // Gradient fill
+    const {
+      gradientType = 'GRADIENT_LINEAR',
+      gradientStops,
+      gradientTransform
+    } = params;
+
+    // Validate gradient type
+    const validTypes = ['GRADIENT_LINEAR', 'GRADIENT_RADIAL', 'GRADIENT_ANGULAR', 'GRADIENT_DIAMOND'];
+    if (!validTypes.includes(gradientType)) {
+      throw new Error(`Invalid gradient type: ${gradientType}. Must be one of: ${validTypes.join(', ')}`);
+    }
+
+    // Convert gradient stops to Figma format
+    const formattedStops = gradientStops.map(stop => ({
+      position: parseFloat(stop.position) || 0,
+      color: {
+        r: parseFloat(stop.color.r) || 0,
+        g: parseFloat(stop.color.g) || 0,
+        b: parseFloat(stop.color.b) || 0,
+        a: parseFloat(stop.color.a) || 1,
+      }
+    }));
+
+    paintStyle = {
+      type: gradientType,
+      gradientStops: formattedStops,
+      gradientTransform: gradientTransform || [
+        [1, 0, 0],
+        [0, 1, 0]
+      ], // Default identity transform
+    };
+  } else {
+    // Solid fill (existing logic)
+    const {
+      color: { r, g, b, a },
+    } = params;
+
+    // Create RGBA color
+    const rgbColor = {
+      r: parseFloat(r) || 0,
+      g: parseFloat(g) || 0,
+      b: parseFloat(b) || 0,
+      a: parseFloat(a) || 1,
+    };
+
+    // Set fill
+    paintStyle = {
+      type: "SOLID",
+      color: {
+        r: parseFloat(rgbColor.r),
+        g: parseFloat(rgbColor.g),
+        b: parseFloat(rgbColor.b),
+      },
+      opacity: parseFloat(rgbColor.a),
+    };
+  }
 
   console.log("paintStyle", paintStyle);
 
